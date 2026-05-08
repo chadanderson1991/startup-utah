@@ -197,9 +197,10 @@ watch(
           <div
             v-for="(msg, idx) in messages"
             :key="idx"
-            class="flex"
-            :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
+            class="flex flex-col"
+            :class="msg.role === 'user' ? 'items-end' : 'items-start'"
           >
+            <!-- Bubble -->
             <div
               class="max-w-[82%] px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap"
               :class="msg.role === 'user'
@@ -212,6 +213,18 @@ watch(
                 <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:150ms" />
                 <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:300ms" />
               </span>
+            </div>
+
+            <!-- Resource cards -->
+            <div
+              v-if="msg.resources?.length"
+              class="w-full mt-2 flex flex-col gap-2"
+            >
+              <ChatbotChatResourceCard
+                v-for="r in msg.resources"
+                :key="r.id"
+                :resource="r"
+              />
             </div>
           </div>
         </div>
