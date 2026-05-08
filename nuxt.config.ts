@@ -9,6 +9,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+    groqApiKey: process.env.GROQ_API_KEY || '',
     supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || '',
     public: {
       mapboxToken: process.env.NUXT_PUBLIC_MAPBOX_TOKEN || '',
