@@ -30,16 +30,16 @@ defineProps<{
       >
         <UIcon name="i-heroicons-magnifying-glass" class="w-7 h-7" style="color: var(--brand-green)" />
       </div>
-      <p class="text-lg font-semibold text-gray-800 mb-1">No resources match your filters</p>
-      <p class="text-sm text-gray-500 max-w-sm">
+      <p class="text-lg font-semibold text-white mb-1">No resources match your filters</p>
+      <p class="text-sm max-w-sm" style="color: #a8b2d1">
         Try broadening your search or ask the Navigator chatbot for personalized help.
       </p>
     </div>
 
     <!-- Results -->
     <div v-else>
-      <p class="text-sm text-gray-500 mb-4">
-        Showing <span class="font-semibold text-gray-800">{{ resources.length }}</span>
+      <p class="text-sm mb-4" style="color: #a8b2d1">
+        Showing <span class="font-semibold text-white">{{ resources.length }}</span>
         {{ resources.length === 1 ? 'resource' : 'resources' }}
       </p>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
