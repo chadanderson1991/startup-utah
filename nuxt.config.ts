@@ -1,6 +1,10 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
-  modules: ['@nuxt/ui', '@nuxtjs/supabase', '@netlify/nuxt'],
+  modules: [
+    '@nuxt/ui',
+    '@nuxtjs/supabase',
+    ...(process.env.NETLIFY ? ['@netlify/nuxt'] : []),
+  ],
   app: {
     head: {
       link: [
@@ -14,7 +18,6 @@ export default defineNuxtConfig({
   },
   supabase: {
     redirect: false,
-    serviceKey: undefined,
   },
   runtimeConfig: {
     anthropicApiKey: '',

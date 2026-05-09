@@ -11,6 +11,7 @@ node_modules
 .env.*
 !.env.example
 dist
+dist/
 
 # Netlify build output (contains inlined env vars)
 .netlify
