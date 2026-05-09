@@ -12,6 +12,9 @@ node_modules
 !.env.example
 dist
 
+# Netlify build output (contains inlined env vars)
+.netlify
+
 # Logs
 logs
 *.log
