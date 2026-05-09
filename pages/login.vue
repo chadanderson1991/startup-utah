@@ -36,19 +36,19 @@ async function handleMagicLink() {
     <UCard class="w-full max-w-sm">
       <template #header>
         <div class="text-center">
-          <div
-            class="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold mx-auto mb-3"
-            style="background-color: #1a365d"
-          >
-            SU
-          </div>
+          <img
+            src="/brand/startup-logo-small.svg"
+            alt="Startup State"
+            class="w-10 h-10 mx-auto mb-3 p-2 rounded-lg"
+            style="background-color: var(--brand-green)"
+          />
           <h1 class="text-xl font-bold text-gray-900">Sign in to Startup State</h1>
           <p class="text-sm text-gray-500 mt-1">We'll send you a magic link — no password needed.</p>
         </div>
       </template>
 
       <div v-if="sent" class="flex flex-col items-center gap-3 py-4 text-center">
-        <UIcon name="i-heroicons-envelope-20-solid" class="w-10 h-10 text-blue-600" />
+        <UIcon name="i-heroicons-envelope-20-solid" class="w-10 h-10 text-primary-600" />
         <p class="text-gray-700 font-medium">Check your email</p>
         <p class="text-sm text-gray-500">
           We sent a login link to <strong>{{ email }}</strong>. It expires in 10 minutes.
