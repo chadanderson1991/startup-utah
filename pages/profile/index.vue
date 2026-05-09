@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { UTAH_COUNTIES, INDUSTRIES, COMMUNITIES, SECTORS, STAGES } from '~/lib/constants'
 import { SECTOR_COLORS, SECTOR_COLOR_DEFAULT } from '~/lib/sector-colors'
-import type { UserProfile, Business, ProfileUpdate } from '~/types/profile'
+import { useActiveBusiness } from '~/composables/useActiveBusiness'
+import type { ProfileUpdate } from '~/types/profile'
 import type { Company } from '~/types/company'
 
 interface WatchlistItem {
@@ -25,8 +26,14 @@ const isSaving = ref(false)
 const saveError = ref<string | null>(null)
 const saveSuccess = ref(false)
 
-const { data: profile, refresh: refreshProfile } = await useFetch<UserProfile>('/api/profile')
-const { data: businesses, refresh: refreshBusinesses } = await useFetch<Business[]>('/api/businesses')
+const {
+  profile,
+  businesses,
+  savedActiveBusinessId: activeBusinessId,
+  setActiveBusiness,
+  refresh: refreshProfileAndBusinesses,
+} = useActiveBusiness()
+
 const { data: watchlistItems, refresh: refreshWatchlist } = await useFetch<WatchlistItem[]>('/api/watchlist')
 const { toggleWatchlist } = useWatchlist()
 
@@ -35,10 +42,9 @@ async function removeFromWatchlist(companyId: string) {
   await refreshWatchlist()
 }
 
-const activeBusinessId = computed({
-  get: () => profile.value?.active_business_id ?? null,
-  set: (id) => { if (profile.value) profile.value.active_business_id = id },
-})
+// The composable populates lazily on the client; await so the form below
+// seeds from real data instead of empty strings.
+await refreshProfileAndBusinesses()
 
 const form = reactive<ProfileUpdate>({
   full_name:          profile.value?.full_name ?? '',
@@ -82,7 +88,7 @@ async function saveProfile() {
   saveSuccess.value = false
   try {
     await $fetch('/api/profile', { method: 'PATCH', body: form })
-    await refreshProfile()
+    await refreshProfileAndBusinesses()
     saveSuccess.value = true
     setTimeout(() => { saveSuccess.value = false }, 3000)
   } catch (err: unknown) {
@@ -93,16 +99,11 @@ async function saveProfile() {
   }
 }
 
-async function setActiveBusiness(id: string | null) {
-  activeBusinessId.value = id  // instant visual update
-  await $fetch('/api/profile', { method: 'PATCH', body: { active_business_id: id } })
-}
-
 async function deleteBusiness(id: string) {
   if (!confirm('Delete this business? This cannot be undone.')) return
   await $fetch(`/api/businesses/${id}`, { method: 'DELETE' })
   if (profile.value?.active_business_id === id) await setActiveBusiness(null)
-  else await refreshBusinesses()
+  else await refreshProfileAndBusinesses()
 }
 </script>
 

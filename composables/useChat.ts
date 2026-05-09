@@ -25,7 +25,7 @@ export interface ChatMessage {
 }
 
 const RESOURCE_MARKER = '__RESOURCES__'
-const GREETING = "Hi! I'm Startup Sprig. I'll help you find the right state programs and resources for your specific situation."
+const GREETING = "Hi! I'm Startup Sprig. I'll help you find the right state programs and resources for your specific situation. Sign in or create a profile and I can tailor my recommendations to your business."
 
 function parseMessage(raw: string): { content: string; resources?: ChatResource[] } {
   const idx = raw.indexOf(RESOURCE_MARKER)

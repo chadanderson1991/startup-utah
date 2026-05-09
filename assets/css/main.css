@@ -178,6 +178,32 @@
   cursor: not-allowed;
 }
 
+/* Quick-start pills — outlined in the user-bubble cyan, fill on hover.
+   Shared between the inline SprigChatPanel and the floating ChatWidget popup. */
+.sprig-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  background-color: transparent;
+  color: var(--sprig-user-bg);
+  border: 2px solid var(--sprig-user-bg);
+  transition: background-color 150ms ease, color 150ms ease, transform 150ms ease;
+  cursor: pointer;
+}
+.sprig-pill:hover:not(:disabled) {
+  background-color: var(--sprig-user-bg);
+  color: var(--sprig-user-text);
+  transform: translateY(-1px);
+}
+.sprig-pill:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Sprig mascot — soft green ambient pulse while idle */
 .sprig-idle-glow {
   animation: sprig-idle-pulse 3.4s ease-in-out infinite;

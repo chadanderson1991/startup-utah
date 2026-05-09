@@ -71,15 +71,61 @@ const STAGE_TOPICS: Record<string, string[]> = {
   established: ['Late Stage Growth', 'International Trade'],
 }
 
+// Common words to drop when tokenizing the user's message — they don't carry
+// matching signal and would otherwise pull in noise resources.
+const STOPWORDS = new Set([
+  'a','about','an','and','any','are','as','at','be','been','but','by','can','could','do','does',
+  'did','for','from','had','has','have','he','her','here','him','his','how','i','if','in','into',
+  'is','it','its','just','lately','like','many','me','more','most','my','no','not','of','on','or',
+  'our','out','over','recent','recently','same','she','should','so','some','such','that','the',
+  'their','them','then','there','these','they','this','those','through','to','too','up','us',
+  'was','we','were','what','when','where','which','while','who','whom','why','will','with',
+  'would','you','your','yours',
+])
+
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length >= 2 && !STOPWORDS.has(t))
+}
+
+// Score a resource against tokens from the user's message. Title hits weigh
+// most, topic/industry/community hits next, description hits last.
+function scoreMessageMatch(r: Record<string, unknown>, tokens: string[]): number {
+  if (!tokens.length) return 0
+  const title       = String(r.title       ?? '').toLowerCase()
+  const description = String(r.description ?? '').toLowerCase()
+  const topics      = ((r.topics      as string[]) ?? []).join(' ').toLowerCase()
+  const industries  = ((r.industries  as string[]) ?? []).join(' ').toLowerCase()
+  const communities = ((r.communities as string[]) ?? []).join(' ').toLowerCase()
+
+  let score = 0
+  for (const tok of tokens) {
+    if (title.includes(tok))       score += 5
+    if (topics.includes(tok))      score += 4
+    if (industries.includes(tok))  score += 3
+    if (communities.includes(tok)) score += 3
+    if (description.includes(tok)) score += 2
+  }
+  return score
+}
+
 function filterResources(
   resources: Record<string, unknown>[],
   ctx?: UserContext,
+  message?: string,
 ): Record<string, unknown>[] {
-  if (!ctx?.stage && !ctx?.industry && !ctx?.communities?.length) {
+  const tokens = message ? tokenize(message) : []
+  const hasProfileSignal = !!(ctx?.stage || ctx?.industry || ctx?.communities?.length)
+
+  // Nothing to score on at all → fall back to first 40 by DB order.
+  if (!tokens.length && !hasProfileSignal) {
     return resources.slice(0, 40)
   }
 
-  const stageTopics = ctx.stage ? STAGE_TOPICS[ctx.stage] ?? [] : []
+  const stageTopics = ctx?.stage ? STAGE_TOPICS[ctx.stage] ?? [] : []
 
   const scored = resources.map(r => {
     let score = 0
@@ -88,12 +134,14 @@ function filterResources(
     const rIndustries  = (r.industries  as string[]) ?? []
 
     if (stageTopics.length && rTopics.some(t => stageTopics.includes(t))) score += 3
-    if (ctx.communities?.length && rCommunities.some(c =>
+    if (ctx?.communities?.length && rCommunities.some(c =>
       ctx.communities!.some(uc => c.toLowerCase().includes(uc.toLowerCase()))
     )) score += 2
-    if (ctx.industry && rIndustries.some(i =>
+    if (ctx?.industry && rIndustries.some(i =>
       i.toLowerCase().includes(ctx.industry!.toLowerCase())
     )) score += 2
+
+    score += scoreMessageMatch(r, tokens)
 
     return { r, score }
   })
@@ -103,8 +151,12 @@ function filterResources(
 }
 
 // Build a compact resource list — omit null/empty fields to save tokens.
-function buildResourceBlock(resources: Record<string, unknown>[], ctx?: UserContext): string {
-  const filtered = filterResources(resources, ctx)
+function buildResourceBlock(
+  resources: Record<string, unknown>[],
+  ctx?: UserContext,
+  message?: string,
+): string {
+  const filtered = filterResources(resources, ctx, message)
   const compact = filtered.map(r => {
     const obj: Record<string, unknown> = { id: r.id, title: r.title }
     if (r.description)                                                obj.description = r.description
@@ -230,7 +282,7 @@ export default defineEventHandler(async (event) => {
       cacheExpiry = Date.now() + 5 * 60 * 1000
     }
 
-    const resourceBlock = buildResourceBlock(cachedResources, userContext ?? undefined)
+    const resourceBlock = buildResourceBlock(cachedResources, userContext ?? undefined, message)
 
     // Profile or context block — small and user-specific, not cached
     const userBlock = (profile || business)
