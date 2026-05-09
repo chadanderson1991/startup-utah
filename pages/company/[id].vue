@@ -100,7 +100,7 @@ const canClaim = computed(
             :href="company.website"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-blue-600 hover:underline truncate"
+            class="text-primary-600 hover:underline truncate"
           >
             {{ company.website.replace(/^https?:\/\//, '') }}
           </a>
@@ -111,7 +111,7 @@ const canClaim = computed(
             :href="company.linkedin_url"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-blue-600 hover:underline truncate"
+            class="text-primary-600 hover:underline truncate"
           >
             LinkedIn
           </a>

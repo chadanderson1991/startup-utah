@@ -103,7 +103,7 @@ const columns = [
         </div>
       </template>
       <template #link-data="{ row }">
-        <a v-if="(row as Resource).link" :href="(row as Resource).link ?? ''" target="_blank" class="text-blue-600 hover:underline text-xs truncate max-w-xs block">
+        <a v-if="(row as Resource).link" :href="(row as Resource).link ?? ''" target="_blank" class="text-primary-600 hover:underline text-xs truncate max-w-xs block">
           {{ (row as Resource).link }}
         </a>
         <span v-else class="text-gray-400 text-xs">—</span>

@@ -9,44 +9,24 @@ const isAdmin = computed(
 )
 
 const navLinks = [
-  { label: 'Home', to: '/' },
-  { label: 'Find Resources', to: '/navigator' },
+  { label: 'Start Your Journey', to: '/' },
+  { label: 'Resources', to: '/navigator' },
+  { label: 'Get Funding', to: '/navigator?category=funding' },
   { label: 'Startup Map', to: '/map' },
+  { label: 'Why Utah?', to: '#' },
+  { label: 'Events', to: '#' },
+  { label: 'News', to: '#' },
+  { label: 'Contact', to: '#' },
 ]
 </script>
 
 <template>
   <div class="flex flex-col" style="height: 100vh; overflow: hidden;">
     <header class="bg-white border-b border-gray-200 z-30 shrink-0">
-      <UContainer class="max-w-7xl">
-        <div class="flex items-center justify-between h-16 gap-4">
-          <NuxtLink to="/" class="flex items-center gap-2 shrink-0">
-            <div
-              class="w-8 h-8 rounded-md flex items-center justify-center text-white font-bold text-sm"
-              style="background-color: #1a365d"
-            >
-              SU
-            </div>
-            <span class="font-bold text-gray-900 hidden sm:block">
-              Startup State
-              <span class="text-gray-400 font-normal">· Utah</span>
-            </span>
-          </NuxtLink>
-
-          <nav class="flex items-center gap-1">
-            <UButton
-              v-for="link in navLinks"
-              :key="link.to"
-              :to="link.to"
-              variant="ghost"
-              color="gray"
-              size="sm"
-              :class="route.path === link.to ? 'text-blue-700 bg-blue-50' : ''"
-            >
-              {{ link.label }}
-            </UButton>
-          </nav>
-
+      <!-- Brand row: UTAH | Startup State | GOEO  (full-width, edge-aligned) -->
+      <div class="border-b border-gray-100">
+        <div class="flex items-stretch justify-between gap-4 w-full pl-4 pr-4 sm:pl-6 sm:pr-6">
+          <UtahHeaderBrand />
           <div class="flex items-center gap-2 shrink-0">
             <UButton
               v-if="isAdmin"
@@ -68,10 +48,28 @@ const navLinks = [
             </template>
           </div>
         </div>
+      </div>
+
+      <!-- Nav row -->
+      <UContainer class="max-w-7xl">
+        <nav class="hidden lg:flex items-center gap-1 h-12">
+          <NuxtLink
+            v-for="link in navLinks"
+            :key="link.label"
+            :to="link.to"
+            class="px-3 py-2 text-sm font-semibold rounded-md transition-colors"
+            :class="
+              route.path === link.to
+                ? 'text-startup-green-700 bg-startup-green-50'
+                : 'text-gray-700 hover:text-startup-green-700 hover:bg-startup-green-50'
+            "
+          >
+            {{ link.label }}
+          </NuxtLink>
+        </nav>
       </UContainer>
     </header>
 
-    <!-- Map fills all remaining height -->
     <main class="flex-1 relative overflow-hidden">
       <slot />
     </main>

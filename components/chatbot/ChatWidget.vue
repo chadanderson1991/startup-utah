@@ -102,7 +102,10 @@ watch(
       style="width: 420px; height: 600px"
     >
       <!-- Header -->
-      <div class="flex items-center justify-between px-4 py-3 shrink-0" style="background-color: #1a365d">
+      <div
+        class="flex items-center justify-between px-4 py-3 shrink-0"
+        style="background-color: var(--brand-green-dark)"
+      >
         <div class="flex items-center gap-2">
           <UIcon name="i-heroicons-chat-bubble-left-ellipsis" class="w-5 h-5 text-white" />
           <div>
@@ -204,7 +207,7 @@ watch(
             <div
               class="max-w-[82%] px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap"
               :class="msg.role === 'user'
-                ? 'bg-blue-600 text-white rounded-br-sm'
+                ? 'bg-startup-green-600 text-white rounded-br-sm'
                 : 'bg-gray-100 text-gray-800 rounded-bl-sm'"
             >
               <template v-if="msg.content">{{ msg.content }}</template>
@@ -252,7 +255,7 @@ watch(
     <UButton
       size="lg"
       class="rounded-full shadow-lg px-5"
-      :style="{ backgroundColor: '#1a365d', borderColor: '#1a365d' }"
+      :style="{ backgroundColor: 'var(--brand-green-dark)', borderColor: 'var(--brand-green-dark)' }"
       @click="toggle"
     >
       <template #leading>

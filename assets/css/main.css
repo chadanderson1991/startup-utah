@@ -1,9 +1,105 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400;1,700&display=swap');
+
+:root {
+  --brand-green-bright: #11df81;
+  --brand-green: #009d4e;
+  --brand-green-medium: #59b779;
+  --brand-green-dark: #175944;
+  --brand-green-light: #a3f0ae;
+  --brand-navy: #0d192d;
+  --brand-text: #474747;
+  --brand-amber: #ffae00;
+}
+
+html,
+body {
+  font-family: 'Source Sans 3', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--brand-text);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Source Sans 3', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* "UTAH's thriving ecosystem" section — values copied from startup.utah.gov */
+.thriving-section .thriving-h2 {
+  color: #11df81;
+  font-size: 2em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+  margin: 0;
+  padding: 0;
+}
+.thriving-section .thriving-sub {
+  color: #ffffff;
+  font-size: 21px;
+  line-height: 1.5;
+  margin-top: 1.25rem;
+  text-align: center;
+}
+.thriving-section .thriving-card-h3 {
+  color: #ffffff;
+  font-size: 1.19em;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-align: center;
+  margin: 0 0 1.5rem 0;
+}
+.thriving-section .thriving-card-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #11df81;
+  color: #0d192d;
+  border: 1px solid #11df81;
+  border-radius: 999px;
+  padding: 0.5rem 2rem;
+  min-height: 2.25rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  transition: background-color 0.2s, color 0.2s;
+}
+.thriving-section .thriving-card-btn:hover {
+  background-color: transparent;
+  color: #ffffff;
+}
+
+/* Footer "Subscribe to Newsletter" button — transparent w/ green border, inverts on hover */
+.newsletter-btn {
+  background-color: transparent;
+  border: 2px solid #11df81;
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 0.5rem 1.5rem;
+  min-height: 2.25rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.15;
+  text-decoration: none;
+}
+.newsletter-btn:hover {
+  background-color: #ffffff;
+  color: #0d192d;
+}
+
 /* Mapbox popup reset to work with Tailwind */
 .mapboxgl-popup-content {
   padding: 0;
   border-radius: 0.5rem;
   overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 .mapboxgl-popup-close-button {
   font-size: 1.25rem;
