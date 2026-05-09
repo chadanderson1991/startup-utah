@@ -1,23 +1,40 @@
 <script setup lang="ts">
+import { SECTOR_COLORS, SECTOR_COLOR_DEFAULT } from '~/lib/sector-colors'
 import type { Company } from '~/types/company'
 
 const props = defineProps<{
   company: Company
+  isInvestor?: boolean
+  isWatchlisted?: boolean
 }>()
-const emit = defineEmits<{ (e: 'close'): void }>()
+
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'toggle-watchlist', companyId: string): void
+}>()
 
 const truncatedDescription = computed(() => {
   if (!props.company.description) return null
   if (props.company.description.length <= 200) return props.company.description
   return props.company.description.slice(0, 197) + '...'
 })
+
+const sectorAccentColor = computed(() => {
+  return SECTOR_COLORS[props.company.sector ?? ''] ?? SECTOR_COLOR_DEFAULT
+})
 </script>
 
 <template>
   <div
-    class="absolute top-4 right-4 z-20 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden"
+    class="bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden"
     style="width: 320px"
   >
+    <!-- Sector color accent bar -->
+    <div
+      class="h-1 w-full"
+      :style="{ backgroundColor: sectorAccentColor }"
+    />
+
     <!-- Header -->
     <div class="flex items-start justify-between p-4 pb-2">
       <div class="flex-1 min-w-0">
@@ -82,6 +99,22 @@ const truncatedDescription = computed(() => {
       >
         View Full Profile
       </UButton>
+
+      <!-- Watchlist button — visible to investors only -->
+      <button
+        v-if="isInvestor"
+        class="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium border transition-colors"
+        :class="isWatchlisted
+          ? 'bg-green-600 text-white border-green-600 hover:bg-green-700'
+          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+        @click="emit('toggle-watchlist', company.id)"
+      >
+        <UIcon
+          :name="isWatchlisted ? 'i-heroicons-bookmark-solid' : 'i-heroicons-bookmark'"
+          class="w-4 h-4 shrink-0"
+        />
+        {{ isWatchlisted ? 'Saved' : 'Save to Watchlist' }}
+      </button>
     </div>
   </div>
 </template>

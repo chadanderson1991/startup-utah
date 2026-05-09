@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { SECTOR_COLORS, SECTOR_COLOR_DEFAULT } from '~/lib/sector-colors'
 import type { Company } from '~/types/company'
 
 const props = defineProps<{ companies: Company[] }>()
@@ -15,7 +16,7 @@ onMounted(async () => {
 
   map = new mapboxgl.Map({
     container: mapContainer.value!,
-    style: 'mapbox://styles/mapbox/light-v11',
+    style: 'mapbox://styles/mapbox/outdoors-v12',
     center: [-111.093, 39.32],
     zoom: 6.5,
   })
@@ -99,8 +100,25 @@ function addCompaniesLayer() {
     source: 'companies',
     filter: ['!', ['has', 'point_count']],
     paint: {
-      'circle-color': '#009d4e',
-      'circle-radius': 8,
+      'circle-color': [
+        'match',
+        ['get', 'sector'],
+        'B2B Software',     SECTOR_COLORS['B2B Software'],
+        'FinTech',          SECTOR_COLORS['FinTech'],
+        'Security',         SECTOR_COLORS['Security'],
+        'Bio/Medical Tech', SECTOR_COLORS['Bio/Medical Tech'],
+        'Energy',           SECTOR_COLORS['Energy'],
+        'Consumer',         SECTOR_COLORS['Consumer'],
+        'Marketplaces',     SECTOR_COLORS['Marketplaces'],
+        SECTOR_COLOR_DEFAULT,
+      ],
+      'circle-radius': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        5,  7,
+        14, 10,
+      ],
       'circle-stroke-width': 2,
       'circle-stroke-color': '#fff',
     },

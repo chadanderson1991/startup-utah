@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Company } from '~/types/company'
+import type { UserProfile } from '~/types/profile'
 
 const route = useRoute()
 const user = useSupabaseUser()
@@ -18,6 +19,32 @@ const canClaim = computed(
     !company.value.claimed_by &&
     user.value,
 )
+
+// Investor watchlist support
+const { fetchWatchlist, toggleWatchlist, isWatchlisted } = useWatchlist()
+
+const { data: profile } = await useAsyncData<UserProfile | null>(
+  'company-profile',
+  async () => {
+    if (!user.value) return null
+    return $fetch<UserProfile>('/api/profile').catch(() => null)
+  },
+  { watch: [user] },
+)
+
+const isInvestor = computed(
+  () => (profile.value as UserProfile | null)?.profile_type === 'investor',
+)
+
+onMounted(async () => {
+  if (user.value && isInvestor.value) {
+    await fetchWatchlist()
+  }
+})
+
+watch(isInvestor, async (val) => {
+  if (val) await fetchWatchlist()
+})
 </script>
 
 <template>
@@ -74,16 +101,36 @@ const canClaim = computed(
             </div>
           </div>
 
-          <!-- Claim button -->
-          <UButton
-            v-if="canClaim"
-            :to="`/company/claim/${company.id}`"
-            variant="outline"
-            color="gray"
-            size="sm"
-          >
-            Claim this Profile
-          </UButton>
+          <!-- Actions row -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <!-- Watchlist bookmark (investors only) -->
+            <button
+              v-if="isInvestor"
+              type="button"
+              class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all"
+              :class="isWatchlisted(company.id)
+                ? 'border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                : 'border-gray-300 bg-white text-gray-600 hover:border-amber-400 hover:text-amber-700'"
+              @click="toggleWatchlist(company.id)"
+            >
+              <UIcon
+                :name="isWatchlisted(company.id) ? 'i-heroicons-bookmark-solid' : 'i-heroicons-bookmark'"
+                class="w-4 h-4"
+              />
+              {{ isWatchlisted(company.id) ? 'Saved' : 'Save to Watchlist' }}
+            </button>
+
+            <!-- Claim button -->
+            <UButton
+              v-if="canClaim"
+              :to="`/company/claim/${company.id}`"
+              variant="outline"
+              color="gray"
+              size="sm"
+            >
+              Claim this Profile
+            </UButton>
+          </div>
         </div>
 
         <!-- Description -->

@@ -42,8 +42,15 @@ onBeforeUnmount(() => {
   }
 })
 
+// Investor mode derived from profile
+const profileMode = computed(() =>
+  (profile.value as { profile_type?: string } | null)?.profile_type === 'investor'
+    ? 'investor' as const
+    : 'entrepreneur' as const,
+)
+
 // Quick-start cards shown in the expanded view's empty state
-const quickStartCards = [
+const entrepreneurQuickStartCards = [
   {
     label: 'Thinking of starting my business',
     message: "I'm thinking about starting a business in Utah. Where do I start?",
@@ -66,9 +73,36 @@ const quickStartCards = [
   },
 ]
 
+const investorQuickStartCards = [
+  {
+    label: 'Show me B2B Software companies',
+    message: 'Show me B2B Software companies in Utah.',
+    bg: '#1f5f3f',
+  },
+  {
+    label: 'Which companies are raising Seed funding?',
+    message: 'Which Utah companies are currently raising Seed funding?',
+    bg: '#5e3a8a',
+  },
+  {
+    label: "Who's hiring right now?",
+    message: 'Which Utah startups are actively hiring right now?',
+    bg: '#1e3a8a',
+  },
+  {
+    label: 'Tell me about the Utah FinTech ecosystem',
+    message: 'Tell me about the Utah FinTech ecosystem.',
+    bg: '#0e7490',
+  },
+]
+
+const quickStartCards = computed(() =>
+  profileMode.value === 'investor' ? investorQuickStartCards : entrepreneurQuickStartCards,
+)
+
 async function sendQuickStart(message: string) {
   if (isStreaming.value) return
-  await sendMessage(message, userContext.value, activeBusinessId.value ?? undefined)
+  await sendMessage(message, userContext.value, activeBusinessId.value ?? undefined, profileMode.value)
 }
 
 // Whether the user has actually started a conversation (vs. just the greeting)
@@ -137,10 +171,12 @@ async function fetchPersonalizedGreeting() {
   }
 }
 
-function toggle() {
+async function toggle() {
   if (!isOpen.value) {
     // Decide expanded vs compact at open time so it doesn't flip mid-session
     displayMode.value = isAtTop.value ? 'expanded' : 'compact'
+    // Always refresh profile on open so investor/entrepreneur mode is current
+    if (user.value) await refreshProfile()
   }
   isOpen.value = !isOpen.value
   if (isOpen.value) fetchPersonalizedGreeting()
@@ -175,7 +211,7 @@ async function handleSend() {
   const text = inputText.value.trim()
   if (!text || isStreaming.value) return
   inputText.value = ''
-  await sendMessage(text, userContext.value, activeBusinessId.value ?? undefined)
+  await sendMessage(text, userContext.value, activeBusinessId.value ?? undefined, profileMode.value)
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -204,6 +240,11 @@ watch(
   },
   { deep: true },
 )
+
+// Reset conversation when profile mode switches so investor/entrepreneur don't bleed together
+watch(profileMode, (newMode, oldMode) => {
+  if (newMode !== oldMode) handleClear()
+})
 </script>
 
 <template>
@@ -333,7 +374,9 @@ watch(
           <input
             v-model="inputText"
             type="text"
-            placeholder="I'm thinking of starting an agricultural business"
+            :placeholder="profileMode === 'investor'
+              ? 'Ask about Utah startups, sectors, or funding stages...'
+              : 'I\'m thinking of starting an agricultural business'"
             class="flex-1 bg-transparent border-0 focus:outline-none text-gray-800 placeholder-gray-400 text-base py-2"
             :disabled="isStreaming"
             @keydown="handleKeydown"
@@ -391,8 +434,8 @@ watch(
         </div>
       </div>
 
-      <!-- ONBOARDING (only for logged-out users) -->
-      <div v-if="!onboardingDone && !user" class="flex-1 flex flex-col overflow-y-auto px-4 py-5 gap-4">
+      <!-- ONBOARDING (only for logged-out entrepreneur users) -->
+      <div v-if="!onboardingDone && !user && profileMode === 'entrepreneur'" class="flex-1 flex flex-col overflow-y-auto px-4 py-5 gap-4">
 
         <!-- Step 1: Business stage -->
         <div v-if="onboardingStep === 1">
@@ -518,7 +561,9 @@ watch(
         <div class="px-3 py-3 border-t border-gray-100 flex gap-2 shrink-0">
           <UInput
             v-model="inputText"
-            placeholder="Ask about Utah startup resources..."
+            :placeholder="profileMode === 'investor'
+              ? 'Ask about Utah startups, sectors, or funding stages...'
+              : 'Ask about Utah startup resources...'"
             class="flex-1"
             :disabled="isStreaming"
             @keydown="handleKeydown"

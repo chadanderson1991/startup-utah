@@ -30,6 +30,11 @@ export default defineEventHandler(async (event) => {
   const profile = profileRes.data as UserProfile | null
   const business = bizRes.data as Business | null
 
+  if (profile?.profile_type === 'investor') {
+    const name = profile.full_name ? ` ${profile.full_name.split(' ')[0]}` : ''
+    return { greeting: `Hi${name}! How can I help you today?` }
+  }
+
   const contextLines: string[] = []
   if (profile?.full_name)           contextLines.push(`Name: ${profile.full_name}`)
   if (business?.name)               contextLines.push(`Business: ${business.name}`)

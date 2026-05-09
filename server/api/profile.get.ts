@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   if (error || !data) {
     // Profile might not exist yet (pre-trigger users) — upsert and return empty shell
     await client.from('user_profiles').upsert({ id: user.id }, { onConflict: 'id' })
-    return { id: user.id, full_name: null, county: null, industry: null, communities: [], bio: null, active_business_id: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as UserProfile
+    return { id: user.id, full_name: null, county: null, industry: null, communities: [], bio: null, active_business_id: null, profile_type: 'entrepreneur', preferred_sectors: [], preferred_stages: [], investment_thesis: null, investor_name: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as UserProfile
   }
 
   return data as UserProfile

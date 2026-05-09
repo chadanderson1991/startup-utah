@@ -33,6 +33,13 @@ watch([profile, businesses, user], () => {
   activeBusinessId.value = list.find(b => b.id === saved)?.id ?? list[0].id
 }, { immediate: true })
 
+// Investor mode
+const profileMode = computed(() =>
+  (profile.value as { profile_type?: string } | null)?.profile_type === 'investor'
+    ? 'investor' as const
+    : 'entrepreneur' as const,
+)
+
 const userContext = ref<UserContext>({
   stage: '', industry: '', county: '', communities: [],
 })
@@ -71,6 +78,16 @@ type QuickStartCard =
   | { label: string; to: string;     bg: string; message?: never }
 
 const quickStartCards = computed<QuickStartCard[]>(() => {
+  // Investor mode: always show investor-focused cards regardless of business state
+  if (profileMode.value === 'investor') {
+    return [
+      { label: 'Show me B2B Software companies',                  message: 'Show me B2B Software companies in Utah.',                                  bg: '#1f5f3f' },
+      { label: 'Which companies are raising Seed funding?',       message: 'Which Utah companies are currently raising Seed funding?',                  bg: '#5e3a8a' },
+      { label: "Who's hiring right now?",                         message: 'Which Utah startups are actively hiring right now?',                        bg: '#1e3a8a' },
+      { label: 'Tell me about the Utah FinTech ecosystem',        message: 'Tell me about the Utah FinTech ecosystem.',                                 bg: '#0e7490' },
+    ]
+  }
+
   if (!user.value) {
     return [
       { label: 'Thinking of starting my business', message: "I'm thinking about starting a business in Utah. Where do I start?", bg: '#1f5f3f' },
@@ -181,7 +198,7 @@ const sprigImage = computed(() => {
 async function send(text: string) {
   if (!text || isStreaming.value) return
   flashSendRipple()
-  await sendMessage(text, userContext.value, activeBusinessId.value ?? undefined)
+  await sendMessage(text, userContext.value, activeBusinessId.value ?? undefined, profileMode.value)
 }
 async function handleSend() {
   const text = inputText.value.trim()
@@ -344,7 +361,9 @@ watch(messages, async () => {
     <input
       v-model="inputText"
       type="text"
-      placeholder="I'm thinking of starting an agricultural business"
+      :placeholder="profileMode === 'investor'
+        ? 'Ask about Utah startups, sectors, or funding stages...'
+        : 'I\'m thinking of starting an agricultural business'"
       class="flex-1 bg-transparent border-0 focus:outline-none text-base py-2"
       :disabled="isStreaming"
       @keydown="handleKeydown"
