@@ -12,7 +12,7 @@
 
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
 
@@ -80,9 +80,22 @@ function sleep(ms: number) {
 
 async function run() {
   console.log('Reading Excel file...')
-  const workbook = XLSX.readFile(EXCEL_PATH)
-  const sheet = workbook.Sheets[workbook.SheetNames[0]]
-  const rows = XLSX.utils.sheet_to_json<RawRow>(sheet, { defval: '' })
+  const workbook = new ExcelJS.Workbook()
+  await workbook.xlsx.readFile(EXCEL_PATH)
+  const sheet = workbook.worksheets[0]
+  const headerRow = sheet.getRow(1).values as (string | undefined)[]
+  const headers = headerRow.slice(1) // exceljs row values are 1-indexed with undefined at [0]
+
+  const rows: RawRow[] = []
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return
+    const obj: RawRow = {}
+    ;(row.values as unknown[]).slice(1).forEach((val, i) => {
+      const key = headers[i] ?? `col${i}`
+      obj[key] = val ?? ''
+    })
+    rows.push(obj)
+  })
 
   console.log(`Found ${rows.length} rows`)
 

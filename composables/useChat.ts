@@ -1,17 +1,52 @@
 import { ref } from 'vue'
 
+export interface UserContext {
+  stage?: string
+  industry?: string
+  county?: string
+  communities?: string[]
+  description?: string
+}
+
+export interface ChatResource {
+  id: number
+  title: string
+  link?: string | null
+  resource_type?: string | null
+  topics?: string[]
+  communities?: string[]
+  reason?: string
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+  resources?: ChatResource[]
+}
+
+const RESOURCE_MARKER = '__RESOURCES__'
+const GREETING = "Hi! I'm the Utah Startup Navigator. I'll help you find the right state programs and resources for your specific situation."
+
+function parseMessage(raw: string): { content: string; resources?: ChatResource[] } {
+  const idx = raw.indexOf(RESOURCE_MARKER)
+  if (idx === -1) return { content: raw.trim() }
+  const content = raw.slice(0, idx).trim()
+  try {
+    const resources = JSON.parse(raw.slice(idx + RESOURCE_MARKER.length).trim()) as ChatResource[]
+    return { content, resources }
+  } catch {
+    return { content }
+  }
+}
+
 export const useChat = () => {
-  const messages = ref<{ role: 'user' | 'assistant'; content: string }[]>([
-    {
-      role: 'assistant',
-      content:
-        "Hi! I'm the Utah Startup Navigator. I can help you find the right state resources for your business. Where are you located in Utah, and what type of business or industry are you in?",
-    },
+  const messages = ref<ChatMessage[]>([
+    { role: 'assistant', content: GREETING },
   ])
   const isStreaming = ref(false)
   const error = ref<string | null>(null)
 
-  const sendMessage = async (content: string) => {
+  const sendMessage = async (content: string, userContext?: UserContext) => {
     if (isStreaming.value) return
     messages.value.push({ role: 'user', content })
     const assistantIdx = messages.value.length
@@ -20,25 +55,42 @@ export const useChat = () => {
     error.value = null
 
     try {
-      const history = messages.value.slice(0, -2)
+      // Strip __RESOURCES__ blocks from history before sending to API
+      const history = messages.value.slice(0, -2).map(m => ({
+        role: m.role,
+        content: m.content,
+      }))
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content, history }),
+        body: JSON.stringify({ message: content, history, userContext }),
       })
       if (!response.ok || !response.body) throw new Error('Chat request failed')
+
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
+      let raw = ''
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        messages.value[assistantIdx].content += decoder.decode(value, {
-          stream: true,
-        })
+        raw += decoder.decode(value, { stream: true })
+        // Stream the visible portion (before the marker) live
+        const markerIdx = raw.indexOf(RESOURCE_MARKER)
+        messages.value[assistantIdx].content = markerIdx === -1
+          ? raw
+          : raw.slice(0, markerIdx)
+      }
+
+      // Once complete, parse out resources
+      const parsed = parseMessage(raw)
+      messages.value[assistantIdx].content = parsed.content
+      if (parsed.resources?.length) {
+        messages.value[assistantIdx].resources = parsed.resources
       }
     } catch (err) {
-      messages.value[assistantIdx].content =
-        'Sorry, I ran into an issue. Please try again.'
+      messages.value[assistantIdx].content = 'Sorry, I ran into an issue. Please try again.'
       error.value = String(err)
     } finally {
       isStreaming.value = false
@@ -46,7 +98,7 @@ export const useChat = () => {
   }
 
   const clearMessages = () => {
-    messages.value = [messages.value[0]]
+    messages.value = [{ role: 'assistant', content: GREETING }]
   }
 
   return { messages, isStreaming, error, sendMessage, clearMessages }
