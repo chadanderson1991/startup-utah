@@ -46,7 +46,7 @@ export const useChat = () => {
   const isStreaming = ref(false)
   const error = ref<string | null>(null)
 
-  const sendMessage = async (content: string, userContext?: UserContext) => {
+  const sendMessage = async (content: string, userContext?: UserContext, businessId?: string) => {
     if (isStreaming.value) return
     messages.value.push({ role: 'user', content })
     const assistantIdx = messages.value.length
@@ -64,7 +64,7 @@ export const useChat = () => {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content, history, userContext }),
+        body: JSON.stringify({ message: content, history, userContext, businessId }),
       })
       if (!response.ok || !response.body) throw new Error('Chat request failed')
 

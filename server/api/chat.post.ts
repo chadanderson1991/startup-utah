@@ -1,7 +1,8 @@
 import Groq from 'groq-sdk'
-import { serverSupabaseClient } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 import { createError, defineEventHandler, readBody, setResponseHeaders, sendStream } from 'h3'
 import { ENTREPRENEUR_JOURNEY } from '../utils/entrepreneur-journey'
+import type { UserProfile, Business } from '~/types/profile'
 
 let cachedResources: Record<string, unknown>[] | null = null
 let cacheExpiry = 0
@@ -23,6 +24,7 @@ interface ChatBody {
   message: string
   history?: ChatMessage[]
   userContext?: UserContext
+  businessId?: string
 }
 
 const STATIC_SYSTEM = `You are the Utah Startup Navigator, an official AI assistant for startup.utah.gov — the Utah Governor's Office of Economic Opportunity startup platform.
@@ -121,12 +123,35 @@ function buildUserContextSection(ctx: UserContext): string {
   return lines.join('\n')
 }
 
+function buildProfileSection(profile: UserProfile | null, business: Business | null): string {
+  const lines = ['━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'USER PROFILE (verified)', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━']
+  if (profile?.full_name) lines.push(`Name: ${profile.full_name}`)
+  if (profile?.county)    lines.push(`County: ${profile.county}`)
+  if (profile?.industry)  lines.push(`Industry: ${profile.industry}`)
+  if (profile?.communities?.length) lines.push(`Communities: ${profile.communities.join(', ')}`)
+  if (profile?.bio)       lines.push(`Bio: ${profile.bio}`)
+  if (business) {
+    lines.push('', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'ACTIVE BUSINESS', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    lines.push(`Business name: ${business.name}`)
+    lines.push(`Stage: ${business.stage}`)
+    lines.push(`Currently on journey step: ${business.journey_step} of 19`)
+    if (business.industry)      lines.push(`Industry: ${business.industry}`)
+    if (business.county)        lines.push(`County: ${business.county}`)
+    if (business.description)   lines.push(`Description: ${business.description}`)
+    if (business.year_founded)  lines.push(`Founded: ${business.year_founded}`)
+    if (business.is_hiring)     lines.push('Currently hiring: yes')
+    if (business.notes)         lines.push(`Owner notes: ${business.notes}`)
+  }
+  lines.push('', 'Use this verified profile for all personalization. Skip questions about info already provided.')
+  return lines.join('\n')
+}
+
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const groq = new Groq({ apiKey: config.groqApiKey as string })
 
   const body = await readBody<ChatBody>(event)
-  const { message, history = [], userContext } = body
+  const { message, history = [], userContext, businessId } = body
 
   if (!message?.trim()) {
     throw createError({ statusCode: 400, statusMessage: 'Message is required' })
@@ -143,8 +168,32 @@ export default defineEventHandler(async (event) => {
     cacheExpiry = Date.now() + 5 * 60 * 1000
   }
 
+  // Fetch authenticated user's profile + business (server-side only — client never sends this data)
+  let profile: UserProfile | null = null
+  let business: Business | null = null
+  const authUser = await serverSupabaseUser(event)
+  if (authUser) {
+    const client = await serverSupabaseClient(event)
+    const [profileRes, bizRes] = await Promise.all([
+      client.from('user_profiles').select('*').eq('id', authUser.id).single(),
+      businessId
+        ? client.from('businesses').select('*').eq('id', businessId).single()
+        : Promise.resolve({ data: null, error: null }),
+    ])
+    profile = profileRes.data as UserProfile | null
+    if (businessId && bizRes.data) {
+      business = bizRes.data as Business
+    } else if (businessId) {
+      throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+    }
+  }
+
   let systemPrompt = `${STATIC_SYSTEM}\n\n${buildResourceSection(cachedResources, userContext)}`
-  if (userContext && Object.values(userContext).some(v => v && (!Array.isArray(v) || v.length))) {
+
+  // Prefer server-fetched profile over client-supplied onboarding context
+  if (profile || business) {
+    systemPrompt += `\n\n${buildProfileSection(profile, business)}`
+  } else if (userContext && Object.values(userContext).some(v => v && (!Array.isArray(v) || v.length))) {
     systemPrompt += `\n\n${buildUserContextSection(userContext)}`
   }
 
