@@ -15,6 +15,9 @@ interface WatchlistItem {
 definePageMeta({ middleware: 'auth' })
 useSeoMeta({ title: 'My Profile · Startup State Utah' })
 
+const route = useRoute()
+const returnTo = computed(() => route.query.return as string | undefined)
+
 const STAGE_LABELS: Record<string, string> = {
   idea: 'Just an idea',
   early: 'Early stage',
@@ -90,7 +93,11 @@ async function saveProfile() {
     await $fetch('/api/profile', { method: 'PATCH', body: form })
     await refreshProfileAndBusinesses()
     saveSuccess.value = true
-    setTimeout(() => { saveSuccess.value = false }, 3000)
+    if (returnTo.value && form.full_name) {
+      setTimeout(() => navigateTo(returnTo.value!), 800)
+    } else {
+      setTimeout(() => { saveSuccess.value = false }, 3000)
+    }
   } catch (err: unknown) {
     const e = err as { data?: { statusMessage?: string } }
     saveError.value = e.data?.statusMessage ?? 'Failed to save.'
@@ -121,8 +128,16 @@ async function deleteBusiness(id: string) {
           </template>
 
           <div class="flex flex-col gap-4">
+            <UAlert
+              v-if="returnTo"
+              icon="i-heroicons-information-circle"
+              color="blue"
+              title="Profile required"
+              description="Complete your profile to continue — you'll be redirected automatically after saving."
+              class="mb-1"
+            />
             <UAlert v-if="saveError" icon="i-heroicons-exclamation-triangle" color="red" :description="saveError" />
-            <UAlert v-if="saveSuccess" icon="i-heroicons-check-circle" color="green" description="Profile saved." />
+            <UAlert v-if="saveSuccess" icon="i-heroicons-check-circle" color="green" :description="returnTo ? 'Profile saved. Redirecting…' : 'Profile saved.'" />
 
             <!-- Profile type toggle -->
             <div>

@@ -14,14 +14,13 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = await readBody<ClaimBody>(event)
-
   if (!body.company_id?.trim()) {
     throw createError({ statusCode: 400, statusMessage: 'company_id is required' })
   }
 
   const adminClient = getAdminClient()
 
-  // Check the company exists
+  // Verify company exists
   const { data: company, error: companyError } = await adminClient
     .from('companies')
     .select('id, claimed_by')
@@ -32,17 +31,28 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Company not found' })
   }
 
-  // Check for an existing pending claim by this user
-  const { data: existingClaim } = await adminClient
-    .from('company_claims')
-    .select('id, status')
-    .eq('company_id', body.company_id)
-    .eq('user_id', user.id)
-    .eq('status', 'pending')
-    .maybeSingle()
+  // Block if company is already claimed
+  if (company.claimed_by) {
+    throw createError({ statusCode: 409, statusMessage: 'This company has already been claimed' })
+  }
 
-  if (existingClaim) {
-    throw createError({ statusCode: 409, statusMessage: 'You already have a pending claim for this company' })
+  // Block if any pending claim exists for this company (from any user)
+  const { data: pendingClaims, error: pendingError } = await adminClient
+    .from('company_claims')
+    .select('id, user_id')
+    .eq('company_id', body.company_id)
+    .eq('status', 'pending')
+
+  if (pendingError) {
+    throw createError({ statusCode: 500, statusMessage: pendingError.message })
+  }
+
+  if (pendingClaims && pendingClaims.length > 0) {
+    const ownClaim = pendingClaims.find(c => c.user_id === user.id)
+    if (ownClaim) {
+      throw createError({ statusCode: 409, statusMessage: 'You already have a pending claim for this company' })
+    }
+    throw createError({ statusCode: 409, statusMessage: 'This company already has a pending claim under review' })
   }
 
   const { data, error } = await adminClient

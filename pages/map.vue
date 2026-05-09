@@ -24,6 +24,7 @@ function onFiltersUpdate(newFilters: CompanyFilters) {
 
 function onCompanySelected(company: Company | null) {
   selectCompany(company)
+  if (company) sidebarOpen.value = true
 }
 
 // ── Sidebar collapse ──────────────────────────────────────────────────────────
@@ -81,13 +82,22 @@ const { data: stats } = await useFetch('/api/companies/stats')
       </ClientOnly>
     </div>
 
-    <!-- Filter sidebar — slides over the map, top offset clears the header (~104px) -->
+    <!-- Sidebar — filters or company profile -->
     <aside
       class="absolute left-0 bottom-0 z-20 overflow-y-auto transition-transform duration-150"
       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
       style="top: 104px; width: 288px; background-color: var(--brand-navy); border-right: 1px solid rgba(255,255,255,0.08)"
     >
+      <MapCompanySidebar
+        v-if="selectedCompany"
+        :company="selectedCompany"
+        :is-investor="isInvestor"
+        :is-watchlisted="isWatchlisted(selectedCompany.id)"
+        @close="selectCompany(null)"
+        @toggle-watchlist="toggleWatchlist"
+      />
       <MapFilters
+        v-else
         :model-value="filters"
         :count="companies.length"
         @update:filters="onFiltersUpdate"
@@ -119,21 +129,6 @@ const { data: stats } = await useFetch('/api/companies/stats')
       <MapStatsOverlay :stats="(stats as any)" />
     </div>
     -->
-
-    <!-- Company detail popup (top-right, clears header) -->
-    <div
-      v-if="selectedCompany"
-      class="absolute right-4 z-20 pointer-events-auto"
-      style="top: 120px"
-    >
-      <MapCompanyPopup
-        :company="selectedCompany"
-        :is-investor="isInvestor"
-        :is-watchlisted="isWatchlisted(selectedCompany.id)"
-        @close="selectCompany(null)"
-        @toggle-watchlist="toggleWatchlist"
-      />
-    </div>
 
   </div>
 </template>
