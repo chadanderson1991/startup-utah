@@ -25,6 +25,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@netlify/nuxt": "^0.3.1",
     "@types/mapbox-gl": "^3.4.0",
     "dotenv": "^16.4.5",
     "tsx": "^4.19.1",

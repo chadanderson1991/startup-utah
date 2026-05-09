@@ -1,6 +1,6 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
-  modules: ['@nuxt/ui', '@nuxtjs/supabase'],
+  modules: ['@nuxt/ui', '@nuxtjs/supabase', '@netlify/nuxt'],
   app: {
     head: {
       link: [
