@@ -18,6 +18,7 @@ export interface Company {
   is_verified: boolean
   is_active: boolean
   claimed_by: string | null
+  owner_email: string | null
   created_at: string
   updated_at: string
 }

@@ -1,5 +1,16 @@
 <script setup lang="ts">
-import type { Company, CompanyClaim } from '~/types/company'
+import type { Company } from '~/types/company'
+
+interface AdminClaim {
+  id: string
+  company_id: string
+  user_id: string
+  verification_note: string | null
+  status: string
+  created_at: string
+  companies: { name: string; sector: string | null } | null
+  user_profiles: { full_name: string | null } | null
+}
 
 const user = useSupabaseUser()
 
@@ -18,7 +29,7 @@ const tabs = [{ label: 'Active Companies' }, { label: 'Pending Review' }, { labe
 const search = ref('')
 const activeCompanies = ref<Company[]>([])
 const pendingCompanies = ref<Company[]>([])
-const claims = ref<(CompanyClaim & { company_name?: string })[]>([])
+const claims = ref<AdminClaim[]>([])
 const isLoadingActive = ref(false)
 const isLoadingPending = ref(false)
 const isLoadingClaims = ref(false)
@@ -48,9 +59,29 @@ async function loadPending() {
 async function loadClaims() {
   isLoadingClaims.value = true
   try {
+    claims.value = await $fetch<AdminClaim[]>('/api/admin/claims')
+  } catch {
     claims.value = []
   } finally {
     isLoadingClaims.value = false
+  }
+}
+
+async function approveClaim(claim: AdminClaim) {
+  try {
+    await $fetch(`/api/admin/claims/${claim.id}`, { method: 'PATCH', body: { action: 'approve' } })
+    claims.value = claims.value.filter(c => c.id !== claim.id)
+  } catch (err) {
+    console.error('Approve claim failed:', err)
+  }
+}
+
+async function rejectClaim(claim: AdminClaim) {
+  try {
+    await $fetch(`/api/admin/claims/${claim.id}`, { method: 'PATCH', body: { action: 'reject' } })
+    claims.value = claims.value.filter(c => c.id !== claim.id)
+  } catch (err) {
+    console.error('Reject claim failed:', err)
   }
 }
 
@@ -236,6 +267,36 @@ const pendingColumns = [
       <div v-else-if="!claims.length" class="flex flex-col items-center py-16 text-center">
         <UIcon name="i-heroicons-inbox-20-solid" class="w-10 h-10 text-gray-300 mb-3" />
         <p class="text-gray-500">No pending claims at this time.</p>
+      </div>
+      <div v-else class="flex flex-col gap-4">
+        <p class="text-sm text-gray-500">{{ claims.length }} pending claim{{ claims.length !== 1 ? 's' : '' }}</p>
+        <div
+          v-for="claim in claims"
+          :key="claim.id"
+          class="border border-gray-200 rounded-xl p-5 flex flex-col gap-3 bg-white shadow-sm"
+        >
+          <div class="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p class="font-semibold text-gray-900 text-base">{{ claim.companies?.name ?? claim.company_id }}</p>
+              <div class="flex items-center gap-2 mt-1 flex-wrap">
+                <UBadge v-if="claim.companies?.sector" color="blue" variant="subtle" size="xs">{{ claim.companies.sector }}</UBadge>
+                <span class="text-xs text-gray-400">Submitted {{ new Date(claim.created_at).toLocaleDateString() }}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <UButton size="sm" color="green" variant="soft" @click="approveClaim(claim)">Approve</UButton>
+              <UButton size="sm" color="red" variant="soft" @click="rejectClaim(claim)">Reject</UButton>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 text-sm text-gray-600">
+            <UIcon name="i-heroicons-user-20-solid" class="w-4 h-4 text-gray-400 shrink-0" />
+            <span>{{ claim.user_profiles?.full_name ?? 'Unknown user' }}</span>
+          </div>
+          <div v-if="claim.verification_note" class="bg-gray-50 rounded-lg px-4 py-3 text-sm text-gray-700 leading-relaxed">
+            {{ claim.verification_note }}
+          </div>
+          <div v-else class="text-xs text-gray-400 italic">No verification note provided.</div>
+        </div>
       </div>
     </div>
   </UContainer>
