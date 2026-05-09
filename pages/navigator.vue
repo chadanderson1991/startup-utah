@@ -51,8 +51,5 @@ function onFiltersUpdate(newFilters: ResourceFilters) {
         </div>
       </div>
     </UContainer>
-
-    <!-- Floating chat widget -->
-    <ChatbotChatWidget />
   </div>
 </template>
