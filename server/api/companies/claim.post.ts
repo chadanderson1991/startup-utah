@@ -55,14 +55,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, statusMessage: 'This company already has a pending claim under review' })
   }
 
+  // Upsert so that a user who was previously approved (then had ownership removed)
+  // can reclaim without hitting the UNIQUE(company_id, user_id) constraint.
   const { data, error } = await adminClient
     .from('company_claims')
-    .insert({
+    .upsert({
       company_id: body.company_id,
       user_id: user.id,
       verification_note: body.verification_note ?? null,
       status: 'pending',
-    })
+      reviewed_by: null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'company_id,user_id' })
     .select()
     .single()
 
