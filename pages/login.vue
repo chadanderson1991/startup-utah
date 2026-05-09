@@ -43,7 +43,7 @@ async function handleMagicLink() {
             style="background-color: var(--brand-green)"
           />
           <h1 class="text-xl font-bold text-gray-900">Sign in to Startup State</h1>
-          <p class="text-sm text-gray-500 mt-1">We'll send you a magic link — no password needed.</p>
+          <p class="text-sm text-gray-500 mt-1">Sign in to save your profile and track your businesses.</p>
         </div>
       </template>
 
@@ -82,7 +82,7 @@ async function handleMagicLink() {
 
       <template #footer>
         <p class="text-xs text-center text-gray-400">
-          Admin access only. Public visitors can use the site without signing in.
+          No password needed. Anyone can sign in to save their profile and get personalized Navigator guidance.
         </p>
       </template>
     </UCard>
