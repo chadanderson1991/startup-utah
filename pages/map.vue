@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Company, CompanyFilters } from '~/types/company'
+import type { UserProfile } from '~/types/profile'
 
 useSeoMeta({
   title: 'Startup Map · Startup State Utah',
@@ -8,6 +9,7 @@ useSeoMeta({
 
 definePageMeta({ layout: 'map' })
 
+// ── Company state ─────────────────────────────────────────────────────────────
 const { companies, filters, isLoading, selectedCompany, fetchCompanies, selectCompany } =
   useCompanies()
 
@@ -23,26 +25,41 @@ function onFiltersUpdate(newFilters: CompanyFilters) {
 function onCompanySelected(company: Company | null) {
   selectCompany(company)
 }
+
+// ── Sidebar collapse ──────────────────────────────────────────────────────────
+const sidebarOpen = ref(true)
+
+// ── Auth / profile ────────────────────────────────────────────────────────────
+const user = useSupabaseUser()
+
+const { data: profile } = user.value
+  ? await useFetch<UserProfile>('/api/profile')
+  : { data: ref(null) }
+
+const isInvestor = computed(() => profile.value?.profile_type === 'investor')
+
+// ── Watchlist ─────────────────────────────────────────────────────────────────
+const { fetchWatchlist, toggleWatchlist, isWatchlisted } = useWatchlist()
+
+onMounted(async () => {
+  if (isInvestor.value) {
+    await fetchWatchlist()
+  }
+})
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+const { data: stats } = await useFetch('/api/companies/stats')
 </script>
 
 <template>
-  <div class="flex w-full h-full">
+  <div class="absolute inset-0">
 
-    <!-- Filter sidebar -->
-    <aside class="w-72 shrink-0 bg-white border-r border-gray-200 overflow-y-auto z-10">
-      <MapFilters
-        :model-value="filters"
-        :count="companies.length"
-        @update:filters="onFiltersUpdate"
-      />
-    </aside>
-
-    <!-- Map area -->
-    <div class="flex-1 relative overflow-hidden">
-      <!-- Loading overlay -->
+    <!-- Map: fills full screen behind all overlays -->
+    <div class="absolute inset-0">
       <div
         v-if="isLoading"
-        class="absolute inset-0 z-10 flex items-center justify-center bg-white bg-opacity-60"
+        class="absolute inset-0 z-10 flex items-center justify-center"
+        style="background: rgba(255,255,255,0.6)"
       >
         <div class="flex items-center gap-2 text-gray-600">
           <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 animate-spin" />
@@ -50,7 +67,6 @@ function onCompanySelected(company: Company | null) {
         </div>
       </div>
 
-      <!-- Mapbox map (browser only) -->
       <ClientOnly>
         <MapStartupMap
           :companies="companies"
@@ -63,14 +79,60 @@ function onCompanySelected(company: Company | null) {
           </div>
         </template>
       </ClientOnly>
+    </div>
 
-      <!-- Company detail popup (top-right overlay on the map) -->
-      <div v-if="selectedCompany" class="absolute top-4 right-4 z-20">
-        <MapCompanyPopup
-          :company="selectedCompany"
-          @close="selectCompany(null)"
+    <!-- Filter sidebar — slides over the map, top offset clears the header (~104px) -->
+    <aside
+      class="absolute left-0 bottom-0 z-20 overflow-y-auto transition-transform duration-150"
+      :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+      style="top: 104px; width: 288px; background-color: var(--brand-navy); border-right: 1px solid rgba(255,255,255,0.08)"
+    >
+      <MapFilters
+        :model-value="filters"
+        :count="companies.length"
+        @update:filters="onFiltersUpdate"
+      />
+    </aside>
+
+    <!-- Sidebar toggle button — centered vertically in the sidebar area -->
+    <div
+      class="absolute z-20 flex items-center pointer-events-none transition-all duration-150"
+      :style="sidebarOpen
+        ? 'top: 104px; bottom: 0; left: 288px'
+        : 'top: 104px; bottom: 0; left: 0'"
+    >
+      <button
+        class="pointer-events-auto rounded-r-lg p-1.5 flex items-center justify-center"
+        style="background-color: var(--brand-navy); border: 1px solid rgba(255,255,255,0.15); border-left: none"
+        :aria-label="sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'"
+        @click="sidebarOpen = !sidebarOpen"
+      >
+        <UIcon
+          :name="sidebarOpen ? 'i-heroicons-chevron-left' : 'i-heroicons-chevron-right'"
+          class="w-4 h-4 text-white"
         />
-      </div>
+      </button>
+    </div>
+
+    <!-- Stats overlay (bottom-left) — hidden for now
+    <div class="absolute bottom-4 left-4 z-10 pointer-events-auto" style="top: auto">
+      <MapStatsOverlay :stats="(stats as any)" />
+    </div>
+    -->
+
+    <!-- Company detail popup (top-right, clears header) -->
+    <div
+      v-if="selectedCompany"
+      class="absolute right-4 z-20 pointer-events-auto"
+      style="top: 120px"
+    >
+      <MapCompanyPopup
+        :company="selectedCompany"
+        :is-investor="isInvestor"
+        :is-watchlisted="isWatchlisted(selectedCompany.id)"
+        @close="selectCompany(null)"
+        @toggle-watchlist="toggleWatchlist"
+      />
     </div>
 
   </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const user = useSupabaseUser()
 const route = useRoute()
+const supabase = useSupabaseClient()
 
 const isAdmin = computed(
   () =>
@@ -11,20 +12,31 @@ const isAdmin = computed(
 const navLinks = [
   { label: 'Start Your Journey', to: '/journey' },
   { label: 'Resources', to: '/navigator' },
-  { label: 'Get Funding', to: '/navigator?category=funding' },
+  { label: 'Get Funding', to: '/navigator?topics=Funding' },
   { label: 'Startup Map', to: '/map' },
   { label: 'Why Utah?', to: '#' },
   { label: 'Events', to: '#' },
   { label: 'News', to: '#' },
   { label: 'Contact', to: '#' },
 ]
+
+async function signOut() {
+  await supabase.auth.signOut()
+  navigateTo('/login')
+}
 </script>
 
 <template>
-  <div class="flex flex-col" style="height: 100vh; overflow: hidden;">
-    <header class="bg-white border-b border-gray-200 z-30 shrink-0">
-      <!-- Brand row: UTAH | Startup State | GOEO  (full-width, edge-aligned) -->
-      <div class="border-b border-gray-100">
+  <div style="position: fixed; inset: 0; overflow: hidden;">
+    <!-- Map fills the entire screen -->
+    <main style="position: absolute; inset: 0; z-index: 0;">
+      <slot />
+    </main>
+
+    <!-- Header floats over the map -->
+    <header style="position: absolute; top: 0; left: 0; right: 0; z-index: 30;">
+      <!-- Brand row: white -->
+      <div class="bg-white border-b border-gray-100">
         <div class="flex items-stretch justify-between gap-4 w-full pl-4 pr-4 sm:pl-6 sm:pr-6">
           <UtahHeaderBrand />
           <div class="flex items-center gap-2 shrink-0">
@@ -42,36 +54,49 @@ const navLinks = [
               <UButton to="/login" size="sm" variant="ghost" color="gray">Sign in</UButton>
             </template>
             <template v-else>
-              <UButton size="sm" variant="ghost" color="gray" icon="i-heroicons-user-circle-20-solid">
+              <UButton
+                to="/profile"
+                size="sm"
+                variant="ghost"
+                color="gray"
+                icon="i-heroicons-user-circle-20-solid"
+              >
                 {{ user.email?.split('@')[0] }}
+              </UButton>
+              <UButton
+                size="sm"
+                variant="ghost"
+                color="gray"
+                icon="i-heroicons-arrow-right-on-rectangle-20-solid"
+                @click="signOut"
+              >
+                Sign out
               </UButton>
             </template>
           </div>
         </div>
       </div>
 
-      <!-- Nav row -->
-      <UContainer class="max-w-7xl">
-        <nav class="hidden lg:flex items-center gap-1 h-12">
-          <NuxtLink
-            v-for="link in navLinks"
-            :key="link.label"
-            :to="link.to"
-            class="px-3 py-2 text-sm font-semibold rounded-md transition-colors"
-            :class="
-              route.path === link.to
-                ? 'text-startup-green-700 bg-startup-green-50'
-                : 'text-gray-700 hover:text-startup-green-700 hover:bg-startup-green-50'
-            "
-          >
-            {{ link.label }}
-          </NuxtLink>
-        </nav>
-      </UContainer>
+      <!-- Nav row: dark navy -->
+      <div style="background-color: var(--brand-navy)">
+        <UContainer class="max-w-7xl">
+          <nav class="hidden lg:flex items-center gap-1 h-12">
+            <NuxtLink
+              v-for="link in navLinks"
+              :key="link.label"
+              :to="link.to"
+              class="px-3 py-2 text-sm font-semibold rounded-md transition-colors"
+              :class="
+                route.path === link.to
+                  ? 'text-white bg-white/15'
+                  : 'text-white/70 hover:text-white hover:bg-white/10'
+              "
+            >
+              {{ link.label }}
+            </NuxtLink>
+          </nav>
+        </UContainer>
+      </div>
     </header>
-
-    <main class="flex-1 relative overflow-hidden">
-      <slot />
-    </main>
   </div>
 </template>

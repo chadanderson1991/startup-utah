@@ -2,11 +2,16 @@ import Anthropic from '@anthropic-ai/sdk'
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 import { createError, defineEventHandler, readBody, setResponseHeaders, sendStream } from 'h3'
 import { ENTREPRENEUR_JOURNEY } from '../utils/entrepreneur-journey'
+import { INVESTOR_STATIC_SYSTEM } from '../utils/investor-system'
 import type { UserProfile, Business } from '~/types/profile'
 
 // Resource cache — 5-min TTL matches Anthropic's ephemeral cache TTL
 let cachedResources: Record<string, unknown>[] | null = null
 let cacheExpiry = 0
+
+// Company database cache for investor mode — 5-min TTL
+let cachedCompanyDb: string | null = null
+let companyDbExpiry = 0
 
 interface UserContext {
   stage?: string
@@ -26,6 +31,7 @@ interface ChatBody {
   history?: ChatMessage[]
   userContext?: UserContext
   businessId?: string
+  mode?: 'entrepreneur' | 'investor'
 }
 
 // Static content — combined into one block for a single cache breakpoint.
@@ -39,7 +45,7 @@ STRICT GUARDRAILS
 - ONLY answer questions about Utah entrepreneurship, state programs, business resources, funding, licensing, workforce, and the Utah startup ecosystem.
 - Do NOT provide legal advice, tax advice, medical advice, financial planning advice, or general life advice.
 - Do NOT discuss politics, news, sports, entertainment, or any topic unrelated to Utah entrepreneurship.
-- Do NOT recommend resources that are not in the database — never make up programs.
+- Do NOT recommend resources that are not in the Utah programs and services information provided — never make up programs.
 - If asked anything off-topic, respond only: "I'm focused on helping Utah entrepreneurs find state resources. Tell me about your business and I can point you to the right programs."
 
 HOW TO HELP USERS — RESPONSE STYLE
@@ -108,11 +114,11 @@ function buildResourceBlock(resources: Record<string, unknown>[], ctx?: UserCont
     if ((r.topics      as string[])?.length)                          obj.topics      = r.topics
     return obj
   })
-  return `RESOURCE DATABASE (${compact.length} of ${resources.length} Utah state resources, filtered for relevance)\n${JSON.stringify(compact)}`
+  return `UTAH PROGRAMS AND SERVICES (${compact.length} of ${resources.length} available, filtered for relevance)\n${JSON.stringify(compact)}`
 }
 
 function buildProfileBlock(profile: UserProfile | null, business: Business | null): string {
-  const lines: string[] = ['USER PROFILE (verified)']
+  const lines: string[] = ['USER INFORMATION']
   if (profile?.full_name)           lines.push(`Name: ${profile.full_name}`)
   if (profile?.county)              lines.push(`County: ${profile.county}`)
   if (profile?.industry)            lines.push(`Industry: ${profile.industry}`)
@@ -133,7 +139,7 @@ function buildProfileBlock(profile: UserProfile | null, business: Business | nul
 }
 
 function buildContextBlock(ctx: UserContext): string {
-  const lines: string[] = ['USER CONTEXT (from onboarding)']
+  const lines: string[] = ['USER INFORMATION']
   if (ctx.stage)              lines.push(`Stage: ${ctx.stage}`)
   if (ctx.industry)           lines.push(`Industry: ${ctx.industry}`)
   if (ctx.county)             lines.push(`County: ${ctx.county}`)
@@ -147,21 +153,10 @@ export default defineEventHandler(async (event) => {
   const anthropic = new Anthropic({ apiKey: config.anthropicApiKey as string })
 
   const body = await readBody<ChatBody>(event)
-  const { message, history = [], userContext, businessId } = body
+  const { message, history = [], userContext, businessId, mode } = body
 
   if (!message?.trim()) {
     throw createError({ statusCode: 400, statusMessage: 'Message is required' })
-  }
-
-  // Refresh resource cache every 5 min (aligned with Anthropic cache TTL)
-  if (!cachedResources || Date.now() > cacheExpiry) {
-    const client = await serverSupabaseClient(event)
-    const { data } = await client
-      .from('resources')
-      .select('id,title,description,link,communities,industries,locations,topics')
-      .eq('is_active', true)
-    cachedResources = data || []
-    cacheExpiry = Date.now() + 5 * 60 * 1000
   }
 
   // Fetch authenticated user's profile + business server-side.
@@ -190,31 +185,77 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const resourceBlock = buildResourceBlock(cachedResources, userContext ?? undefined)
+  const isInvestorMode = mode === 'investor' || profile?.profile_type === 'investor'
 
-  // Profile or context block — small and user-specific, not cached
-  const userBlock = (profile || business)
-    ? buildProfileBlock(profile, business)
-    : (userContext && Object.values(userContext).some(v => v && (!Array.isArray(v) || v.length)))
-      ? buildContextBlock(userContext)
-      : null
+  let systemBlocks: Anthropic.Messages.TextBlockParam[]
 
-  const systemBlocks: Anthropic.Messages.TextBlockParam[] = [
-    // Block 1: static instructions + 19-step journey — cached (never changes)
-    {
-      type: 'text',
-      text: STATIC_SYSTEM,
-      cache_control: { type: 'ephemeral' },
-    },
-    // Block 2: resource database — cached (refreshes every 5 min, matches cache TTL)
-    {
-      type: 'text',
-      text: resourceBlock,
-      cache_control: { type: 'ephemeral' },
-    },
-    // Block 3: user profile — NOT cached (unique per user/request)
-    ...(userBlock ? [{ type: 'text' as const, text: userBlock }] : []),
-  ]
+  if (isInvestorMode) {
+    // Refresh company database cache every 5 min
+    if (!cachedCompanyDb || Date.now() > companyDbExpiry) {
+      const client = await serverSupabaseClient(event)
+      const { data } = await client
+        .from('companies')
+        .select('id, name, sector, stage, employee_range, is_hiring, description, website, city')
+        .eq('is_active', true)
+      const companies = data ?? []
+      const lines = companies.map(c => {
+        const desc = c.description ? c.description.slice(0, 100) : ''
+        return `- ${c.name} | ${c.sector ?? ''} | ${c.stage ?? ''} | Employees: ${c.employee_range ?? ''} | Hiring: ${c.is_hiring ? 'Yes' : 'No'} | City: ${c.city ?? ''} | ${desc}`
+      })
+      cachedCompanyDb = `UTAH STARTUP ECOSYSTEM (${companies.length} companies):\n${lines.join('\n')}`
+      companyDbExpiry = Date.now() + 5 * 60 * 1000
+    }
+
+    systemBlocks = [
+      {
+        type: 'text',
+        text: INVESTOR_STATIC_SYSTEM,
+        cache_control: { type: 'ephemeral' },
+      },
+      {
+        type: 'text',
+        text: cachedCompanyDb,
+        cache_control: { type: 'ephemeral' },
+      },
+    ]
+  } else {
+    // Entrepreneur mode — refresh resource cache every 5 min (aligned with Anthropic cache TTL)
+    if (!cachedResources || Date.now() > cacheExpiry) {
+      const client = await serverSupabaseClient(event)
+      const { data } = await client
+        .from('resources')
+        .select('id,title,description,link,communities,industries,locations,topics')
+        .eq('is_active', true)
+      cachedResources = data || []
+      cacheExpiry = Date.now() + 5 * 60 * 1000
+    }
+
+    const resourceBlock = buildResourceBlock(cachedResources, userContext ?? undefined)
+
+    // Profile or context block — small and user-specific, not cached
+    const userBlock = (profile || business)
+      ? buildProfileBlock(profile, business)
+      : (userContext && Object.values(userContext).some(v => v && (!Array.isArray(v) || v.length)))
+        ? buildContextBlock(userContext)
+        : null
+
+    systemBlocks = [
+      // Block 1: static instructions + 19-step journey — cached (never changes)
+      {
+        type: 'text',
+        text: STATIC_SYSTEM,
+        cache_control: { type: 'ephemeral' },
+      },
+      // Block 2: resource database — cached (refreshes every 5 min, matches cache TTL)
+      {
+        type: 'text',
+        text: resourceBlock,
+        cache_control: { type: 'ephemeral' },
+      },
+      // Block 3: user profile — NOT cached (unique per user/request)
+      ...(userBlock ? [{ type: 'text' as const, text: userBlock }] : []),
+    ]
+  }
 
   const messages: Anthropic.Messages.MessageParam[] = [
     ...history

@@ -102,7 +102,7 @@ function stageChipStyle(stage: string, active: boolean) {
   <div class="flex flex-col h-full">
 
     <!-- Header -->
-    <div class="flex items-center gap-2 px-4 py-3 shrink-0" style="background-color: var(--brand-green-dark)">
+    <div class="flex items-center gap-2 px-4 py-3 shrink-0" style="background-color: rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.1)">
       <UIcon name="i-heroicons-funnel-20-solid" class="w-4 h-4 text-white" />
       <span class="text-white font-semibold text-sm">Filter Companies</span>
       <span
@@ -117,8 +117,8 @@ function stageChipStyle(stage: string, active: boolean) {
     <div class="overflow-y-auto flex-1 p-4 flex flex-col gap-5">
 
       <!-- Count -->
-      <p class="text-xs text-gray-500">
-        Showing <span class="font-semibold text-gray-800">{{ count }}</span>
+      <p class="text-xs" style="color: #a8b2d1">
+        Showing <span class="font-semibold text-white">{{ count }}</span>
         {{ count === 1 ? 'company' : 'companies' }}
       </p>
 
@@ -128,16 +128,18 @@ function stageChipStyle(stage: string, active: boolean) {
         placeholder="Search by name..."
         icon="i-heroicons-magnifying-glass-20-solid"
         size="sm"
+        :ui="{ base: 'bg-white/10 text-white placeholder-white/40 border-white/20 focus:border-white/40' }"
         @update:model-value="update('search', $event)"
       />
 
       <!-- Sector -->
       <div>
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sector</span>
+          <span class="text-xs font-semibold uppercase tracking-wide" style="color: #a8b2d1">Sector</span>
           <button
             v-if="modelValue.sectors.length"
-            class="text-xs text-gray-400 hover:text-gray-600"
+            class="text-xs transition-colors"
+            style="color: #a8b2d1"
             @click="update('sectors', [])"
           >
             clear
@@ -160,10 +162,11 @@ function stageChipStyle(stage: string, active: boolean) {
       <!-- Stage -->
       <div>
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Stage</span>
+          <span class="text-xs font-semibold uppercase tracking-wide" style="color: #a8b2d1">Stage</span>
           <button
             v-if="modelValue.stages.length"
-            class="text-xs text-gray-400 hover:text-gray-600"
+            class="text-xs transition-colors"
+            style="color: #a8b2d1"
             @click="update('stages', [])"
           >
             clear
@@ -185,10 +188,11 @@ function stageChipStyle(stage: string, active: boolean) {
       <!-- Team Size -->
       <div>
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team Size</span>
+          <span class="text-xs font-semibold uppercase tracking-wide" style="color: #a8b2d1">Team Size</span>
           <button
             v-if="modelValue.employee_ranges.length"
-            class="text-xs text-gray-400 hover:text-gray-600"
+            class="text-xs transition-colors"
+            style="color: #a8b2d1"
             @click="update('employee_ranges', [])"
           >
             clear
@@ -200,8 +204,8 @@ function stageChipStyle(stage: string, active: boolean) {
             :key="range"
             class="px-2.5 py-1 rounded-full text-xs font-medium border transition-all duration-150"
             :style="modelValue.employee_ranges.includes(range)
-              ? 'background-color:#374151;color:#ffffff;border-color:#374151'
-              : 'background-color:#f9fafb;color:#4b5563;border-color:#d1d5db'"
+              ? 'background-color:#ffffff;color:#0d192d;border-color:#ffffff'
+              : 'background-color:rgba(255,255,255,0.08);color:#a8b2d1;border-color:rgba(255,255,255,0.15)'"
             @click="toggleChip('employee_ranges', range)"
           >
             {{ range }}
@@ -212,11 +216,11 @@ function stageChipStyle(stage: string, active: boolean) {
       <!-- Hiring Now -->
       <div
         class="flex items-center justify-between py-2 px-3 rounded-lg border"
-        style="background-color:#f0fdf4;border-color:#bbf7d0"
+        style="background-color:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.15)"
       >
         <div class="flex items-center gap-2">
-          <UIcon name="i-heroicons-briefcase-20-solid" class="w-4 h-4" style="color:#16a34a" />
-          <span class="text-sm font-medium" style="color:#166534">Hiring Now</span>
+          <UIcon name="i-heroicons-briefcase-20-solid" class="w-4 h-4" style="color: var(--brand-green-bright)" />
+          <span class="text-sm font-medium text-white">Hiring Now</span>
         </div>
         <UToggle
           :model-value="modelValue.is_hiring === true"
@@ -228,17 +232,19 @@ function stageChipStyle(stage: string, active: boolean) {
       <!-- Clear all -->
       <button
         v-if="activeFilterCount > 0"
-        class="w-full text-xs text-gray-400 hover:text-gray-600 py-1.5 border border-dashed border-gray-200 hover:border-gray-400 rounded-lg transition-colors"
+        class="w-full text-xs py-1.5 rounded-lg transition-colors"
+        style="color:#a8b2d1;border:1px dashed rgba(255,255,255,0.2)"
         @click="clearAll"
       >
         Clear all filters
       </button>
 
       <!-- Add company -->
-      <div class="mt-auto pt-3 border-t border-gray-100">
+      <div class="mt-auto pt-3" style="border-top: 1px solid rgba(255,255,255,0.1)">
         <NuxtLink
           to="/company/new"
-          class="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+          class="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-xs font-medium transition-colors"
+          style="color:#a8b2d1"
         >
           <UIcon name="i-heroicons-plus-circle-20-solid" class="w-4 h-4" />
           Add your company

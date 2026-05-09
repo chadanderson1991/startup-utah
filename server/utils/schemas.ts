@@ -15,6 +15,11 @@ export const ProfileUpdateSchema = z.object({
   communities:         z.array(z.enum(COMMUNITIES)).optional(),
   bio:                 z.string().max(5000).nullable().optional(),
   active_business_id:  z.string().uuid().nullable().optional(),
+  profile_type:        z.enum(['entrepreneur', 'investor']).optional(),
+  preferred_sectors:   z.array(z.string().max(100)).optional(),
+  preferred_stages:    z.array(z.string().max(100)).optional(),
+  investment_thesis:   z.string().max(5000).nullable().optional(),
+  investor_name:       z.string().max(200).nullable().optional(),
 })
 
 export const BusinessCreateSchema = z.object({

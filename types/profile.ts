@@ -1,5 +1,6 @@
 export type Community = 'Veteran' | 'Women' | 'Rural' | 'Student' | 'Multicultural'
 export type BusinessStage = 'idea' | 'early' | 'growth' | 'established'
+export type ProfileType = 'entrepreneur' | 'investor'
 
 export interface UserProfile {
   id: string
@@ -9,6 +10,11 @@ export interface UserProfile {
   communities: Community[]
   bio: string | null
   active_business_id: string | null
+  profile_type: ProfileType
+  preferred_sectors: string[]
+  preferred_stages: string[]
+  investment_thesis: string | null
+  investor_name: string | null
   created_at: string
   updated_at: string
 }
