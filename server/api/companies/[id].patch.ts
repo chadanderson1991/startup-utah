@@ -36,7 +36,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = await readBody<Partial<Company>>(event)
-  const { id: _id, created_at: _ca, updated_at: _ua, claimed_by: _cb, ...updatePayload } = body as Record<string, unknown>
+  // Admins may explicitly clear claimed_by / owner_email to unclaim a company.
+  // Non-admins can never touch ownership fields.
+  const { id: _id, created_at: _ca, updated_at: _ua, ...adminPayload } = body as Record<string, unknown>
+  const { claimed_by: _cb, owner_email: _oe, ...ownerPayload } = adminPayload
+  const updatePayload = isAdmin ? adminPayload : ownerPayload
 
   const adminClient = getAdminClient()
   const { data, error } = await adminClient

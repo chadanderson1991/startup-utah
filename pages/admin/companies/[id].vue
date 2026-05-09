@@ -52,6 +52,7 @@ const form = reactive<FormState>({
 })
 
 const isSaving = ref(false)
+const isRemovingOwner = ref(false)
 const successMessage = ref<string | null>(null)
 const errorMessage = ref<string | null>(null)
 
@@ -74,6 +75,26 @@ if (company.value) {
   form.is_hiring = c.is_hiring
   form.is_verified = c.is_verified
   form.is_active = c.is_active
+}
+
+async function removeOwner() {
+  if (!company.value) return
+  isRemovingOwner.value = true
+  successMessage.value = null
+  errorMessage.value = null
+  try {
+    await $fetch(`/api/companies/${route.params.id}`, {
+      method: 'PATCH',
+      body: { claimed_by: null, owner_email: null },
+    })
+    company.value = { ...company.value, claimed_by: null, owner_email: null }
+    successMessage.value = 'Owner removed. The company can now be claimed again.'
+  } catch (err: unknown) {
+    const e = err as { data?: { statusMessage?: string } }
+    errorMessage.value = e.data?.statusMessage ?? 'Failed to remove owner.'
+  } finally {
+    isRemovingOwner.value = false
+  }
 }
 
 async function handleSave() {
@@ -186,6 +207,28 @@ async function handleSave() {
           <UToggle v-model="form.is_active" />
           <span class="text-sm font-medium text-gray-700">Active (visible on map)</span>
         </div>
+      </div>
+
+      <!-- Owner section -->
+      <div class="border border-gray-200 rounded-xl p-4 flex flex-col gap-3">
+        <p class="text-sm font-semibold text-gray-700">Ownership</p>
+        <div v-if="company?.claimed_by" class="flex items-center justify-between gap-4 flex-wrap">
+          <div class="flex items-center gap-2 text-sm text-gray-700">
+            <UIcon name="i-heroicons-user-circle-20-solid" class="w-4 h-4 text-gray-400 shrink-0" />
+            <span>{{ company.owner_email ?? 'Email unavailable' }}</span>
+          </div>
+          <UButton
+            size="sm"
+            color="red"
+            variant="soft"
+            icon="i-heroicons-x-mark-20-solid"
+            :loading="isRemovingOwner"
+            @click="removeOwner"
+          >
+            Remove Owner
+          </UButton>
+        </div>
+        <p v-else class="text-sm text-gray-400 italic">No owner — this company can be claimed.</p>
       </div>
 
       <UButton color="primary" size="lg" :loading="isSaving" @click="handleSave">

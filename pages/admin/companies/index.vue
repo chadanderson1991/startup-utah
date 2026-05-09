@@ -163,6 +163,7 @@ const activeColumns = [
   { key: 'name', label: 'Name' },
   { key: 'sector', label: 'Sector' },
   { key: 'stage', label: 'Stage' },
+  { key: 'owner_email', label: 'Owner' },
   { key: 'is_verified', label: 'Verified' },
   { key: 'is_hiring', label: 'Hiring' },
   { key: 'actions', label: '' },
@@ -207,6 +208,10 @@ const pendingColumns = [
         </template>
         <template #stage-data="{ row }">
           <UBadge v-if="(row as Company).stage" color="violet" variant="subtle" size="xs">{{ (row as Company).stage }}</UBadge>
+          <span v-else class="text-gray-400 text-xs">—</span>
+        </template>
+        <template #owner_email-data="{ row }">
+          <span v-if="(row as Company).owner_email" class="text-xs text-gray-700">{{ (row as Company).owner_email }}</span>
           <span v-else class="text-gray-400 text-xs">—</span>
         </template>
         <template #is_verified-data="{ row }">
