@@ -92,6 +92,7 @@ const socials = [
             </template>
             <template v-else>
               <UButton
+                to="/profile"
                 size="sm"
                 variant="ghost"
                 color="gray"

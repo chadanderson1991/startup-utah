@@ -2,6 +2,7 @@
 import { nextTick } from 'vue'
 import { useChat, type UserContext } from '~/composables/useChat'
 import { UTAH_COUNTIES, INDUSTRIES, COMMUNITIES } from '~/lib/constants'
+import type { Business } from '~/types/profile'
 
 const BUSINESS_STAGES = [
   { value: 'idea', label: 'Just an idea', sub: 'Still exploring concepts' },
@@ -15,9 +16,44 @@ const COMMUNITY_OPTIONS = COMMUNITIES.filter(c => c !== 'Any').map(c => ({
   label: c,
 }))
 
+const user = useSupabaseUser()
 const isOpen = ref(false)
 const inputText = ref('')
 const messagesContainer = ref<HTMLDivElement | null>(null)
+
+// Authenticated user's profile + businesses
+const { data: profile, refresh: refreshProfile } = await useAsyncData(
+  'chat-profile',
+  async () => {
+    if (!user.value) return null
+    return $fetch('/api/profile')
+  },
+  { watch: [user] },
+)
+const { data: businesses } = await useAsyncData<Business[]>(
+  'chat-businesses',
+  async () => {
+    if (!user.value) return []
+    return $fetch<Business[]>('/api/businesses')
+  },
+  { watch: [user] },
+)
+const activeBusinessId = ref<string | null>(null)
+watch([profile, businesses, user], () => {
+  if (!user.value) { activeBusinessId.value = null; return }
+  const list = businesses.value ?? []
+  if (!list.length) { activeBusinessId.value = null; return }
+  // Prefer profile's saved active business
+  const saved = (profile.value as { active_business_id?: string | null } | null)?.active_business_id
+  activeBusinessId.value = list.find(b => b.id === saved)?.id ?? list[0].id
+}, { immediate: true })
+watch(activeBusinessId, (val, old) => {
+  if (val !== old && old !== null) {
+    greetingFetched.value = false
+    clearMessages()
+    if (user.value) fetchPersonalizedGreeting()
+  }
+})
 
 // Onboarding state
 const onboardingStep = ref(1)
@@ -31,8 +67,26 @@ const userContext = ref<UserContext>({
 
 const { messages, isStreaming, sendMessage, clearMessages } = useChat()
 
+const greetingFetched = ref(false)
+
+async function fetchPersonalizedGreeting() {
+  if (greetingFetched.value || !user.value) return
+  greetingFetched.value = true
+  messages.value[0].content = '...'
+  try {
+    const { greeting } = await $fetch<{ greeting: string }>('/api/chat/greeting', {
+      method: 'POST',
+      body: { businessId: activeBusinessId.value ?? undefined },
+    })
+    messages.value[0].content = greeting
+  } catch {
+    messages.value[0].content = "Welcome back! I'm here to help you navigate Utah's startup resources. What would you like to work on today?"
+  }
+}
+
 function toggle() {
   isOpen.value = !isOpen.value
+  if (isOpen.value) fetchPersonalizedGreeting()
 }
 
 function close() {
@@ -64,7 +118,7 @@ async function handleSend() {
   const text = inputText.value.trim()
   if (!text || isStreaming.value) return
   inputText.value = ''
-  await sendMessage(text, userContext.value)
+  await sendMessage(text, userContext.value, activeBusinessId.value ?? undefined)
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -76,9 +130,11 @@ function handleKeydown(e: KeyboardEvent) {
 
 function handleClear() {
   clearMessages()
+  greetingFetched.value = false
   onboardingDone.value = false
   onboardingStep.value = 1
   userContext.value = { stage: '', industry: '', county: '', communities: [] }
+  if (user.value) fetchPersonalizedGreeting()
 }
 
 watch(
@@ -122,8 +178,8 @@ watch(
         </div>
       </div>
 
-      <!-- ONBOARDING -->
-      <div v-if="!onboardingDone" class="flex-1 flex flex-col overflow-y-auto px-4 py-5 gap-4">
+      <!-- ONBOARDING (only for logged-out users) -->
+      <div v-if="!onboardingDone && !user" class="flex-1 flex flex-col overflow-y-auto px-4 py-5 gap-4">
 
         <!-- Step 1: Business stage -->
         <div v-if="onboardingStep === 1">
@@ -196,6 +252,17 @@ watch(
 
       <!-- CHAT -->
       <template v-else>
+        <!-- Business selector (logged-in users with 2+ businesses) -->
+        <div v-if="user && businesses && businesses.length > 1" class="px-3 pt-2 pb-1 border-b border-gray-100 shrink-0">
+          <select
+            v-model="activeBusinessId"
+            class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option v-for="b in businesses" :key="b.id" :value="b.id">
+              {{ b.name }} — Step {{ b.journey_step }}/19
+            </option>
+          </select>
+        </div>
         <div ref="messagesContainer" class="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
           <div
             v-for="(msg, idx) in messages"
@@ -210,7 +277,7 @@ watch(
                 ? 'bg-startup-green-600 text-white rounded-br-sm'
                 : 'bg-gray-100 text-gray-800 rounded-bl-sm'"
             >
-              <template v-if="msg.content">{{ msg.content }}</template>
+              <template v-if="msg.content && msg.content !== '...'">{{ msg.content }}</template>
               <span v-else class="flex items-center gap-1 py-1">
                 <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0ms" />
                 <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:150ms" />
