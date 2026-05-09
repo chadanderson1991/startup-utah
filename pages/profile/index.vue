@@ -181,10 +181,10 @@ async function deleteBusiness(id: string) {
                     v-for="sector in SECTORS"
                     :key="sector"
                     type="button"
-                    class="px-3 py-1.5 rounded-full border-2 text-sm font-medium transition-all"
-                    :style="form.preferred_sectors?.includes(sector)
-                      ? `background-color: ${SECTOR_COLORS[sector] ?? '#6b7280'}; border-color: ${SECTOR_COLORS[sector] ?? '#6b7280'}; color: #fff;`
-                      : 'background-color: #fff; border-color: #d1d5db; color: #6b7280;'"
+                    class="px-3 py-1.5 rounded-full border text-sm font-medium transition-all"
+                    :class="form.preferred_sectors?.includes(sector)
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'border-gray-300 text-gray-600 hover:border-blue-400'"
                     @click="toggleSector(sector)"
                   >
                     {{ sector }}
@@ -198,10 +198,10 @@ async function deleteBusiness(id: string) {
                     v-for="stage in STAGES"
                     :key="stage"
                     type="button"
-                    class="px-3 py-1.5 rounded-full border-2 text-sm font-medium transition-all"
-                    :style="form.preferred_stages?.includes(stage)
-                      ? 'background-color: var(--brand-green); border-color: var(--brand-green); color: #fff;'
-                      : 'background-color: #fff; border-color: #d1d5db; color: #6b7280;'"
+                    class="px-3 py-1.5 rounded-full border text-sm font-medium transition-all"
+                    :class="form.preferred_stages?.includes(stage)
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'border-gray-300 text-gray-600 hover:border-blue-400'"
                     @click="toggleStage(stage)"
                   >
                     {{ stage }}
@@ -227,7 +227,7 @@ async function deleteBusiness(id: string) {
                 </UFormGroup>
               </div>
 
-              <UFormGroup label="Bio" hint="Brief background — helps the chatbot understand your experience">
+              <UFormGroup label="Bio" hint="Brief background">
                 <UTextarea v-model="form.bio" placeholder="I've been in retail for 10 years and want to start my own brand..." :rows="3" />
               </UFormGroup>
 

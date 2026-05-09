@@ -4,6 +4,8 @@ import type { Company } from '~/types/company'
 
 useSeoMeta({ title: 'Add Your Company · Startup State Utah' })
 
+const config = useRuntimeConfig()
+
 interface FormState {
   name: string
   description: string
@@ -34,7 +36,65 @@ const isSubmitting = ref(false)
 const createdCompany = ref<Company | null>(null)
 const errorMessage = ref<string | null>(null)
 
-// Address geocoding preview
+// ── Address autocomplete ───────────────────────────────────────────────────────
+interface MapboxFeature {
+  place_name: string
+  center: [number, number]
+}
+
+const suggestions = ref<MapboxFeature[]>([])
+const showSuggestions = ref(false)
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+async function fetchSuggestions(query: string) {
+  if (!query.trim() || query.length < 3) {
+    suggestions.value = []
+    showSuggestions.value = false
+    return
+  }
+  try {
+    const res = await $fetch<{ features: MapboxFeature[] }>(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`,
+      {
+        query: {
+          access_token: config.public.mapboxToken,
+          autocomplete: 'true',
+          limit: '5',
+          country: 'US',
+          proximity: '-111.891,40.758',
+          types: 'address,place,locality',
+        },
+      },
+    )
+    suggestions.value = res.features ?? []
+    showSuggestions.value = suggestions.value.length > 0
+  } catch {
+    suggestions.value = []
+    showSuggestions.value = false
+  }
+}
+
+function onAddressInput(value: string) {
+  form.address = value
+  geoStatus.value = 'idle'
+  geoResult.value = null
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => fetchSuggestions(value), 300)
+}
+
+async function selectSuggestion(s: MapboxFeature) {
+  form.address = s.place_name
+  showSuggestions.value = false
+  suggestions.value = []
+  await verifyAddress()
+}
+
+function onAddressBlur() {
+  // Delay so click on a suggestion registers before the dropdown closes
+  setTimeout(() => { showSuggestions.value = false }, 200)
+}
+
+// ── Geocode verification ───────────────────────────────────────────────────────
 const geoStatus = ref<'idle' | 'checking' | 'found' | 'not_found'>('idle')
 const geoResult = ref<{ lat: number; lng: number; city: string } | null>(null)
 
@@ -57,6 +117,7 @@ async function verifyAddress() {
   }
 }
 
+// ── Submit ─────────────────────────────────────────────────────────────────────
 async function handleSubmit() {
   if (!form.name.trim()) return
   isSubmitting.value = true
@@ -134,11 +195,32 @@ async function handleSubmit() {
       </div>
 
       <UFormGroup label="Address" hint="Used to place your company on the map">
-        <UInput
-          v-model="form.address"
-          placeholder="123 Main St, Salt Lake City, UT 84101"
-          @blur="verifyAddress"
-        />
+        <div class="relative">
+          <UInput
+            :model-value="form.address"
+            placeholder="123 Main St, Salt Lake City, UT 84101"
+            autocomplete="off"
+            @update:model-value="onAddressInput"
+            @blur="onAddressBlur"
+          />
+
+          <!-- Autocomplete dropdown -->
+          <ul
+            v-if="showSuggestions"
+            class="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
+          >
+            <li
+              v-for="s in suggestions"
+              :key="s.place_name"
+              class="px-3 py-2.5 text-sm text-gray-700 cursor-pointer hover:bg-blue-50 hover:text-blue-700 flex items-start gap-2"
+              @mousedown.prevent="selectSuggestion(s)"
+            >
+              <UIcon name="i-heroicons-map-pin-20-solid" class="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
+              {{ s.place_name }}
+            </li>
+          </ul>
+        </div>
+
         <!-- Geocode status feedback -->
         <div v-if="geoStatus === 'checking'" class="mt-1.5 flex items-center gap-1.5 text-xs text-gray-400">
           <UIcon name="i-heroicons-arrow-path-20-solid" class="w-3.5 h-3.5 animate-spin" />
@@ -150,7 +232,7 @@ async function handleSubmit() {
         </div>
         <div v-else-if="geoStatus === 'not_found'" class="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600">
           <UIcon name="i-heroicons-exclamation-triangle-20-solid" class="w-3.5 h-3.5" />
-          Address not found — company will be saved but won't appear on the map. Try a more specific address.
+          Address not found — company will be saved but won't appear on the map.
         </div>
       </UFormGroup>
 
