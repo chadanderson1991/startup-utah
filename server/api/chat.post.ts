@@ -3,7 +3,8 @@ import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 import { createError, defineEventHandler, readBody, setResponseHeaders, sendStream } from 'h3'
 import { ENTREPRENEUR_JOURNEY } from '../utils/entrepreneur-journey'
 import { INVESTOR_STATIC_SYSTEM } from '../utils/investor-system'
-import type { UserProfile, Business } from '~/types/profile'
+import type { UserProfile } from '~/types/profile'
+import type { Company } from '~/types/company'
 
 // Resource cache — 5-min TTL matches Anthropic's ephemeral cache TTL
 let cachedResources: Record<string, unknown>[] | null = null
@@ -169,7 +170,7 @@ function buildResourceBlock(
   return `UTAH PROGRAMS AND SERVICES (${compact.length} of ${resources.length} available, filtered for relevance)\n${JSON.stringify(compact)}`
 }
 
-function buildProfileBlock(profile: UserProfile | null, business: Business | null): string {
+function buildProfileBlock(profile: UserProfile | null, business: Company | null): string {
   const lines: string[] = ['USER INFORMATION']
   if (profile?.full_name)           lines.push(`Name: ${profile.full_name}`)
   if (profile?.county)              lines.push(`County: ${profile.county}`)
@@ -214,7 +215,7 @@ export default defineEventHandler(async (event) => {
   // Fetch authenticated user's profile + business server-side.
   // serverSupabaseUser throws "Auth session missing!" for anonymous users — that's expected here, so swallow it.
   let profile: UserProfile | null = null
-  let business: Business | null = null
+  let business: Company | null = null
   let authUser: Awaited<ReturnType<typeof serverSupabaseUser>> | null = null
   try {
     authUser = await serverSupabaseUser(event)
@@ -226,7 +227,7 @@ export default defineEventHandler(async (event) => {
     const [profileRes, bizRes] = await Promise.all([
       client.from('user_profiles').select('*').eq('id', authUser.id).single(),
       businessId
-        ? client.from('businesses').select('*').eq('id', businessId).single()
+        ? client.from('companies').select('*').eq('id', businessId).single()
         : Promise.resolve({ data: null, error: null }),
     ])
     profile = profileRes.data as UserProfile | null

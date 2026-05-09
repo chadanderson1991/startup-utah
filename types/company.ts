@@ -19,6 +19,10 @@ export interface Company {
   is_active: boolean
   claimed_by: string | null
   owner_email: string | null
+  journey_step: number | null
+  notes: string | null
+  industry: string | null
+  county: string | null
   created_at: string
   updated_at: string
 }

@@ -1,10 +1,11 @@
 import { ref, computed, watch } from 'vue'
-import type { UserProfile, Business } from '~/types/profile'
+import type { UserProfile } from '~/types/profile'
+import type { Company } from '~/types/company'
 
 // Module-scoped: every caller of useActiveBusiness() shares one source of truth.
 // Mirrors the pattern used in useChat.ts.
 const profile = ref<UserProfile | null>(null)
-const businesses = ref<Business[]>([])
+const businesses = ref<Company[]>([])
 const hasLoaded = ref(false)
 let inFlight: Promise<void> | null = null
 let isInitialized = false
@@ -21,7 +22,7 @@ async function refreshAll(authed: boolean): Promise<void> {
     try {
       const [p, b] = await Promise.all([
         $fetch<UserProfile>('/api/profile'),
-        $fetch<Business[]>('/api/businesses'),
+        $fetch<Company[]>('/api/businesses'),
       ])
       profile.value = p
       businesses.value = b
@@ -68,7 +69,7 @@ export const useActiveBusiness = () => {
 
   // Effective business — saved one if it exists, else first business. This is what
   // consumers like the chatbot want for "which business is the user working on".
-  const activeBusiness = computed<Business | null>(() => {
+  const activeBusiness = computed<Company | null>(() => {
     if (!user.value) return null
     const list = businesses.value
     if (!list.length) return null

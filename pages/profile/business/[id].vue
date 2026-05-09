@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { UTAH_COUNTIES, INDUSTRIES, JOURNEY_STEPS } from '~/lib/constants'
-import type { Business, BusinessUpdate } from '~/types/profile'
+import type { Company } from '~/types/company'
+import type { BusinessUpdate } from '~/types/profile'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -14,7 +15,7 @@ const STAGE_OPTIONS = [
   { label: 'Established (5+ years)', value: 'established' },
 ]
 
-const { data: business } = await useFetch<Business>(`/api/businesses/${id}`)
+const { data: business } = await useFetch<Company>(`/api/businesses/${id}`)
 if (!business.value) throw createError({ statusCode: 404, statusMessage: 'Business not found' })
 
 useSeoMeta({ title: `Edit ${business.value.name} · Startup State Utah` })
