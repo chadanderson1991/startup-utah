@@ -13,14 +13,15 @@ onMounted(() => {
 useSeoMeta({ title: 'Manage Resources · Admin' })
 
 const search = ref('')
+const showPending = ref(false)
 const allResources = ref<Resource[]>([])
 const isLoading = ref(false)
 
 async function loadResources() {
   isLoading.value = true
   try {
-    // Fetch all (admin can see inactive too via separate call)
-    allResources.value = await $fetch<Resource[]>('/api/resources')
+    const query = showPending.value ? { include_inactive: 'true' } : {}
+    allResources.value = await $fetch<Resource[]>('/api/resources', { query })
   } catch {
     allResources.value = []
   } finally {
@@ -28,12 +29,16 @@ async function loadResources() {
   }
 }
 
+watch(showPending, loadResources)
+
 onMounted(loadResources)
 
 const filteredResources = computed(() => {
-  if (!search.value.trim()) return allResources.value
+  let list = allResources.value
+  if (showPending.value) list = list.filter(r => !r.is_active)
+  if (!search.value.trim()) return list
   const q = search.value.toLowerCase()
-  return allResources.value.filter(
+  return list.filter(
     (r) =>
       r.title.toLowerCase().includes(q) ||
       (r.description ?? '').toLowerCase().includes(q),
@@ -73,9 +78,15 @@ const columns = [
         <h1 class="text-2xl font-extrabold text-gray-900">Resources</h1>
         <p class="text-sm text-gray-500 mt-0.5">{{ filteredResources.length }} resources</p>
       </div>
-      <UButton to="/admin/resources/new" color="primary" icon="i-heroicons-plus-20-solid">
-        Add Resource
-      </UButton>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <UToggle v-model="showPending" size="sm" />
+          <span class="text-sm text-gray-600">Show pending review</span>
+        </div>
+        <UButton to="/admin/resources/new" color="primary" icon="i-heroicons-plus-20-solid">
+          Add Resource
+        </UButton>
+      </div>
     </div>
 
     <UInput

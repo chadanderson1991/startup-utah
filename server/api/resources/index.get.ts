@@ -1,11 +1,23 @@
-import { serverSupabaseClient } from '#supabase/server'
+import { serverSupabaseUser } from '#supabase/server'
 import { createError, defineEventHandler, getQuery } from 'h3'
+import { getAdminClient } from '~/lib/supabase-admin'
 
 export default defineEventHandler(async (event) => {
-  const client = await serverSupabaseClient(event)
   const query = getQuery(event)
 
-  let builder = client.from('resources').select('*').eq('is_active', true)
+  const includeInactive = query.include_inactive === 'true'
+
+  if (includeInactive) {
+    const user = await serverSupabaseUser(event)
+    const isAdmin =
+      user?.user_metadata?.role === 'admin' || user?.app_metadata?.role === 'admin'
+    if (!isAdmin) throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+  }
+
+  const client = getAdminClient()
+  let builder = includeInactive
+    ? client.from('resources').select('*')
+    : client.from('resources').select('*').eq('is_active', true)
 
   if (query.search) {
     builder = builder.or(

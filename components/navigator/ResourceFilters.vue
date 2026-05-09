@@ -5,9 +5,10 @@ import type { ResourceFilters } from '~/types/resource'
 const props = defineProps<{ modelValue: ResourceFilters }>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: ResourceFilters): void
+  (e: 'download-filtered'): void
+  (e: 'download-all'): void
 }>()
 
-// Debounce for search input
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
 function onSearchInput(value: string) {
@@ -17,15 +18,7 @@ function onSearchInput(value: string) {
   }, 300)
 }
 
-function onSearchChange(value: string) {
-  if (searchTimer) clearTimeout(searchTimer)
-  emit('update:modelValue', { ...props.modelValue, search: value })
-}
-
-function updateFilter<K extends keyof ResourceFilters>(
-  key: K,
-  value: ResourceFilters[K],
-) {
+function updateFilter<K extends keyof ResourceFilters>(key: K, value: ResourceFilters[K]) {
   emit('update:modelValue', { ...props.modelValue, [key]: value })
 }
 
@@ -40,101 +33,106 @@ const activeFilterCount = computed(() => {
 })
 
 function clearAll() {
-  emit('update:modelValue', {
-    search: '',
-    communities: [],
-    industries: [],
-    locations: [],
-    topics: [],
-  })
+  if (searchTimer) clearTimeout(searchTimer)
+  emit('update:modelValue', { search: '', communities: [], industries: [], locations: [], topics: [] })
 }
+
+const communityOptions = COMMUNITIES.filter(c => c !== 'Any')
 </script>
 
 <template>
-  <aside class="sticky top-4 flex flex-col gap-4">
-    <!-- Header -->
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <span class="font-semibold text-gray-800">Filters</span>
-        <UBadge
-          v-if="activeFilterCount > 0"
-          color="primary"
-          variant="solid"
-          size="xs"
-        >
-          {{ activeFilterCount }}
-        </UBadge>
-      </div>
-      <UButton
-        v-if="activeFilterCount > 0"
-        variant="ghost"
-        size="xs"
-        color="gray"
-        @click="clearAll"
-      >
-        Clear all
-      </UButton>
-    </div>
-
+  <div class="py-3 flex flex-wrap items-center gap-2">
     <!-- Search -->
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+    <div class="min-w-[180px] flex-1">
       <UInput
         :model-value="modelValue.search"
         placeholder="Search resources..."
         icon="i-heroicons-magnifying-glass-20-solid"
+        size="sm"
         @input="onSearchInput(($event.target as HTMLInputElement).value)"
-        @change="onSearchChange(($event.target as HTMLInputElement).value)"
       />
     </div>
 
-    <!-- Communities -->
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Community</label>
-      <USelectMenu
-        :model-value="modelValue.communities"
-        :options="COMMUNITIES"
-        multiple
-        placeholder="Any community"
-        @update:model-value="updateFilter('communities', $event)"
-      />
-    </div>
+    <!-- Community -->
+    <USelectMenu
+      :model-value="modelValue.communities"
+      :options="communityOptions"
+      multiple
+      placeholder="Community"
+      size="sm"
+      class="min-w-[130px]"
+      @update:model-value="updateFilter('communities', $event)"
+    />
 
-    <!-- Industries -->
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-      <USelectMenu
-        :model-value="modelValue.industries"
-        :options="INDUSTRIES"
-        multiple
-        placeholder="Any industry"
-        @update:model-value="updateFilter('industries', $event)"
-      />
-    </div>
+    <!-- Industry -->
+    <USelectMenu
+      :model-value="modelValue.industries"
+      :options="INDUSTRIES"
+      multiple
+      placeholder="Industry"
+      size="sm"
+      class="min-w-[130px]"
+      @update:model-value="updateFilter('industries', $event)"
+    />
 
-    <!-- Locations (Utah Counties) -->
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">County</label>
-      <USelectMenu
-        :model-value="modelValue.locations"
-        :options="UTAH_COUNTIES"
-        multiple
-        placeholder="Any county"
-        searchable
-        @update:model-value="updateFilter('locations', $event)"
-      />
-    </div>
+    <!-- County -->
+    <USelectMenu
+      :model-value="modelValue.locations"
+      :options="UTAH_COUNTIES"
+      multiple
+      placeholder="County"
+      size="sm"
+      searchable
+      class="min-w-[120px]"
+      @update:model-value="updateFilter('locations', $event)"
+    />
 
-    <!-- Topics -->
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Topic</label>
-      <USelectMenu
-        :model-value="modelValue.topics"
-        :options="TOPICS"
-        multiple
-        placeholder="Any topic"
-        @update:model-value="updateFilter('topics', $event)"
-      />
+    <!-- Topic -->
+    <USelectMenu
+      :model-value="modelValue.topics"
+      :options="TOPICS"
+      multiple
+      placeholder="Topic"
+      size="sm"
+      class="min-w-[120px]"
+      @update:model-value="updateFilter('topics', $event)"
+    />
+
+    <!-- Download -->
+    <UDropdown
+      :items="[
+        [
+          { label: 'Download filtered list', icon: 'i-heroicons-funnel-20-solid', click: () => emit('download-filtered') },
+          { label: 'Download full list', icon: 'i-heroicons-arrow-down-tray-20-solid', click: () => emit('download-all') },
+        ],
+      ]"
+      :popper="{ placement: 'bottom-end' }"
+    >
+      <UButton
+        variant="outline"
+        color="gray"
+        size="sm"
+        icon="i-heroicons-arrow-down-tray-20-solid"
+        trailing-icon="i-heroicons-chevron-down-20-solid"
+      >
+        Download
+      </UButton>
+    </UDropdown>
+
+    <!-- Active filter badge + clear -->
+    <div v-if="activeFilterCount > 0" class="flex items-center gap-2 shrink-0">
+      <span
+        class="text-xs font-semibold px-2 py-0.5 rounded-full"
+        style="background-color: var(--brand-green-bright); color: #052e16"
+      >
+        {{ activeFilterCount }} active
+      </span>
+      <button
+        class="text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors"
+        @click="clearAll"
+      >
+        Clear all
+      </button>
     </div>
-  </aside>
+  </div>
 </template>
