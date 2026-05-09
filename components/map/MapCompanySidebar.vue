@@ -14,6 +14,19 @@ const emit = defineEmits<{
 }>()
 
 const sectorColor = computed(() => SECTOR_COLORS[props.company.sector ?? ''] ?? SECTOR_COLOR_DEFAULT)
+
+const config = useRuntimeConfig()
+const brandfetchClientId = config.public.brandfetchClientId as string
+
+const logoUrl = computed(() => {
+  if (!props.company.website || !brandfetchClientId) return null
+  const domain = props.company.website.replace(/^https?:\/\//, '').split('/')[0]
+  return `https://cdn.brandfetch.io/${encodeURIComponent(domain)}/w/128/h/128?c=${encodeURIComponent(brandfetchClientId)}`
+})
+
+const logoVisible = ref(true)
+
+watch(() => props.company.id, () => { logoVisible.value = true })
 </script>
 
 <template>
@@ -39,18 +52,28 @@ const sectorColor = computed(() => SECTOR_COLORS[props.company.sector ?? ''] ?? 
       <!-- Sector accent + name -->
       <div>
         <div class="h-1 w-12 rounded-full mb-3" :style="{ backgroundColor: sectorColor }" />
-        <div class="flex items-start justify-between gap-2">
-          <h2 class="text-white font-bold text-lg leading-snug">{{ company.name }}</h2>
-          <UBadge
-            v-if="company.is_verified"
-            color="green"
-            variant="subtle"
-            size="xs"
-            icon="i-heroicons-check-badge-20-solid"
-            class="shrink-0 mt-0.5"
-          >
-            Verified
-          </UBadge>
+        <div class="flex flex-col gap-2">
+          <img
+            v-if="logoUrl && logoVisible"
+            :src="logoUrl"
+            :alt="`${company.name} logo`"
+            class="w-14 h-14 rounded-xl object-contain"
+            style="background-color: rgba(255,255,255,0.08)"
+            @error="logoVisible = false"
+          />
+          <div class="flex items-start justify-between gap-2">
+            <h2 class="text-white font-bold text-lg leading-snug">{{ company.name }}</h2>
+            <UBadge
+              v-if="company.is_verified"
+              color="green"
+              variant="subtle"
+              size="xs"
+              icon="i-heroicons-check-badge-20-solid"
+              class="shrink-0 mt-0.5"
+            >
+              Verified
+            </UBadge>
+          </div>
         </div>
       </div>
 
