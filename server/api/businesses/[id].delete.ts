@@ -6,8 +6,9 @@ export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
   const client = await serverSupabaseClient(event)
 
+  // RLS "companies_owner_delete" restricts to claimed_by = auth.uid() AND is_active = false
   const { error } = await client
-    .from('businesses')
+    .from('companies')
     .delete()
     .eq('id', id)
 

@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
-import type { UserProfile, Business } from '~/types/profile'
+import type { UserProfile } from '~/types/profile'
+import type { Company } from '~/types/company'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
@@ -23,12 +24,12 @@ export default defineEventHandler(async (event) => {
   const [profileRes, bizRes] = await Promise.all([
     client.from('user_profiles').select('*').eq('id', authUser.id).single(),
     businessId
-      ? client.from('businesses').select('*').eq('id', businessId).single()
+      ? client.from('companies').select('*').eq('id', businessId).single()
       : Promise.resolve({ data: null }),
   ])
 
   const profile = profileRes.data as UserProfile | null
-  const business = bizRes.data as Business | null
+  const business = bizRes.data as Company | null
 
   if (profile?.profile_type === 'investor') {
     const name = profile.full_name ? ` ${profile.full_name.split(' ')[0]}` : ''
