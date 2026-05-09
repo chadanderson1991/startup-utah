@@ -102,7 +102,7 @@ function stageChipStyle(stage: string, active: boolean) {
   <div class="flex flex-col h-full">
 
     <!-- Header -->
-    <div class="flex items-center gap-2 px-4 py-3 shrink-0" style="background-color: #1a365d">
+    <div class="flex items-center gap-2 px-4 py-3 shrink-0" style="background-color: var(--brand-green-dark)">
       <UIcon name="i-heroicons-funnel-20-solid" class="w-4 h-4 text-white" />
       <span class="text-white font-semibold text-sm">Filter Companies</span>
       <span

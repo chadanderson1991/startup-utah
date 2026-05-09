@@ -19,7 +19,7 @@ const extraIndustriesCount = computed(() =>
             :href="resource.link"
             target="_blank"
             rel="noopener noreferrer"
-            class="hover:text-blue-700 hover:underline transition-colors"
+            class="hover:text-primary-700 hover:underline transition-colors"
           >
             {{ resource.title }}
           </a>
@@ -89,7 +89,7 @@ const extraIndustriesCount = computed(() =>
         <a
           v-if="resource.email"
           :href="`mailto:${resource.email}`"
-          class="text-sm text-blue-600 hover:underline truncate"
+          class="text-sm text-primary-600 hover:underline truncate"
         >
           {{ resource.email }}
         </a>

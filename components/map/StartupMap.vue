@@ -71,11 +71,11 @@ function addCompaniesLayer() {
       'circle-color': [
         'step',
         ['get', 'point_count'],
-        '#1a365d',
+        '#009d4e',
         10,
-        '#2b4d8a',
+        '#175944',
         30,
-        '#cc0000',
+        '#ffae00',
       ],
       'circle-radius': ['step', ['get', 'point_count'], 20, 10, 30, 30, 40],
     },
@@ -99,7 +99,7 @@ function addCompaniesLayer() {
     source: 'companies',
     filter: ['!', ['has', 'point_count']],
     paint: {
-      'circle-color': '#1a365d',
+      'circle-color': '#009d4e',
       'circle-radius': 8,
       'circle-stroke-width': 2,
       'circle-stroke-color': '#fff',
