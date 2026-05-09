@@ -12,32 +12,42 @@ onMounted(() => {
 
 useSeoMeta({ title: 'Manage Companies · Admin' })
 
-// Tabs
 const selectedTab = ref(0)
-const tabs = [{ label: 'Companies' }, { label: 'Pending Claims' }]
+const tabs = [{ label: 'Active Companies' }, { label: 'Pending Review' }, { label: 'Pending Claims' }]
 
-const companies = ref<Company[]>([])
+const search = ref('')
+const activeCompanies = ref<Company[]>([])
+const pendingCompanies = ref<Company[]>([])
 const claims = ref<(CompanyClaim & { company_name?: string })[]>([])
-const isLoadingCompanies = ref(false)
+const isLoadingActive = ref(false)
+const isLoadingPending = ref(false)
 const isLoadingClaims = ref(false)
 
-async function loadCompanies() {
-  isLoadingCompanies.value = true
+async function loadActive() {
+  isLoadingActive.value = true
   try {
-    companies.value = await $fetch<Company[]>('/api/companies')
+    activeCompanies.value = await $fetch<Company[]>('/api/admin/companies')
   } catch {
-    companies.value = []
+    activeCompanies.value = []
   } finally {
-    isLoadingCompanies.value = false
+    isLoadingActive.value = false
+  }
+}
+
+async function loadPending() {
+  isLoadingPending.value = true
+  try {
+    pendingCompanies.value = await $fetch<Company[]>('/api/admin/companies?pending=true')
+  } catch {
+    pendingCompanies.value = []
+  } finally {
+    isLoadingPending.value = false
   }
 }
 
 async function loadClaims() {
   isLoadingClaims.value = true
   try {
-    // We don't have a dedicated claims endpoint, so we use the admin supabase client via a custom route
-    // For now, list from the companies with claimed_by set
-    // Note: in a real setup you'd have GET /api/admin/claims
     claims.value = []
   } finally {
     isLoadingClaims.value = false
@@ -45,26 +55,80 @@ async function loadClaims() {
 }
 
 onMounted(() => {
-  loadCompanies()
+  loadActive()
+  loadPending()
   loadClaims()
+})
+
+const filteredActive = computed(() => {
+  if (!search.value.trim()) return activeCompanies.value
+  const q = search.value.toLowerCase()
+  return activeCompanies.value.filter(
+    c => c.name.toLowerCase().includes(q) || (c.sector ?? '').toLowerCase().includes(q),
+  )
+})
+
+const filteredPending = computed(() => {
+  if (!search.value.trim()) return pendingCompanies.value
+  const q = search.value.toLowerCase()
+  return pendingCompanies.value.filter(
+    c => c.name.toLowerCase().includes(q) || (c.sector ?? '').toLowerCase().includes(q),
+  )
 })
 
 async function approveCompany(company: Company) {
   try {
     await $fetch(`/api/companies/${company.id}`, {
       method: 'PATCH',
-      body: { is_verified: true },
+      body: { is_active: true, is_verified: true },
     })
-    const idx = companies.value.findIndex((c) => c.id === company.id)
-    if (idx !== -1) {
-      companies.value[idx] = { ...companies.value[idx], is_verified: true }
-    }
+    pendingCompanies.value = pendingCompanies.value.filter(c => c.id !== company.id)
+    activeCompanies.value = [...activeCompanies.value, { ...company, is_active: true, is_verified: true }]
+      .sort((a, b) => a.name.localeCompare(b.name))
   } catch (err) {
     console.error('Approve failed:', err)
   }
 }
 
-const companyColumns = [
+async function deactivateCompany(company: Company) {
+  try {
+    await $fetch(`/api/companies/${company.id}`, {
+      method: 'PATCH',
+      body: { is_active: false },
+    })
+    activeCompanies.value = activeCompanies.value.filter(c => c.id !== company.id)
+    pendingCompanies.value = [...pendingCompanies.value, { ...company, is_active: false }]
+      .sort((a, b) => a.name.localeCompare(b.name))
+  } catch (err) {
+    console.error('Deactivate failed:', err)
+  }
+}
+
+async function deleteCompany(company: Company) {
+  if (!confirm(`Delete "${company.name}"? This cannot be undone.`)) return
+  try {
+    await $fetch(`/api/companies/${company.id}`, { method: 'DELETE' })
+    activeCompanies.value = activeCompanies.value.filter(c => c.id !== company.id)
+    pendingCompanies.value = pendingCompanies.value.filter(c => c.id !== company.id)
+  } catch (err) {
+    console.error('Delete failed:', err)
+  }
+}
+
+async function verifyCompany(company: Company) {
+  try {
+    await $fetch(`/api/companies/${company.id}`, {
+      method: 'PATCH',
+      body: { is_verified: true },
+    })
+    const idx = activeCompanies.value.findIndex(c => c.id === company.id)
+    if (idx !== -1) activeCompanies.value[idx] = { ...activeCompanies.value[idx], is_verified: true }
+  } catch (err) {
+    console.error('Verify failed:', err)
+  }
+}
+
+const activeColumns = [
   { key: 'name', label: 'Name' },
   { key: 'sector', label: 'Sector' },
   { key: 'stage', label: 'Stage' },
@@ -72,31 +136,46 @@ const companyColumns = [
   { key: 'is_hiring', label: 'Hiring' },
   { key: 'actions', label: '' },
 ]
+
+const pendingColumns = [
+  { key: 'name', label: 'Name' },
+  { key: 'sector', label: 'Sector' },
+  { key: 'stage', label: 'Stage' },
+  { key: 'submitted', label: 'Submitted' },
+  { key: 'actions', label: '' },
+]
 </script>
 
 <template>
   <UContainer class="max-w-7xl py-10 px-4">
-    <h1 class="text-2xl font-extrabold text-gray-900 mb-6">Companies</h1>
+    <UButton to="/admin" variant="ghost" color="gray" size="sm" icon="i-heroicons-arrow-left-20-solid" class="mb-6">
+      Back to Admin
+    </UButton>
 
-    <UTabs :items="tabs" v-model="selectedTab" class="mb-6" />
+    <h1 class="text-2xl font-extrabold text-gray-900 mb-2">Companies</h1>
 
-    <!-- Companies tab -->
+    <UTabs :items="tabs" v-model="selectedTab" class="mb-4" />
+
+    <UInput
+      v-model="search"
+      placeholder="Search companies..."
+      icon="i-heroicons-magnifying-glass-20-solid"
+      class="mb-4 max-w-sm"
+    />
+
+    <!-- Active Companies tab -->
     <div v-if="selectedTab === 0">
-      <UTable
-        :rows="companies"
-        :columns="companyColumns"
-        :loading="isLoadingCompanies"
-      >
+      <p class="text-sm text-gray-500 mb-4">{{ filteredActive.length }} active companies</p>
+      <UTable :rows="filteredActive" :columns="activeColumns" :loading="isLoadingActive">
+        <template #name-data="{ row }">
+          <span class="font-medium text-gray-900">{{ (row as Company).name }}</span>
+        </template>
         <template #sector-data="{ row }">
-          <UBadge v-if="(row as Company).sector" color="blue" variant="subtle" size="xs">
-            {{ (row as Company).sector }}
-          </UBadge>
+          <UBadge v-if="(row as Company).sector" color="blue" variant="subtle" size="xs">{{ (row as Company).sector }}</UBadge>
           <span v-else class="text-gray-400 text-xs">—</span>
         </template>
         <template #stage-data="{ row }">
-          <UBadge v-if="(row as Company).stage" color="violet" variant="subtle" size="xs">
-            {{ (row as Company).stage }}
-          </UBadge>
+          <UBadge v-if="(row as Company).stage" color="violet" variant="subtle" size="xs">{{ (row as Company).stage }}</UBadge>
           <span v-else class="text-gray-400 text-xs">—</span>
         </template>
         <template #is_verified-data="{ row }">
@@ -110,49 +189,53 @@ const companyColumns = [
         </template>
         <template #actions-data="{ row }">
           <div class="flex items-center gap-2">
-            <UButton :to="`/admin/companies/${(row as Company).id}`" size="xs" variant="ghost" color="gray">
-              Edit
-            </UButton>
-            <UButton
-              v-if="!(row as Company).is_verified"
-              size="xs"
-              variant="ghost"
-              color="green"
-              @click="approveCompany(row as Company)"
-            >
-              Verify
-            </UButton>
+            <UButton :to="`/admin/companies/${(row as Company).id}`" size="xs" variant="ghost" color="gray">Edit</UButton>
+            <UButton v-if="!(row as Company).is_verified" size="xs" variant="ghost" color="green" @click="verifyCompany(row as Company)">Verify</UButton>
+            <UButton size="xs" variant="ghost" color="orange" @click="deactivateCompany(row as Company)">Deactivate</UButton>
+            <UButton size="xs" variant="ghost" color="red" icon="i-heroicons-trash-20-solid" @click="deleteCompany(row as Company)" />
+          </div>
+        </template>
+      </UTable>
+    </div>
+
+    <!-- Pending Review tab -->
+    <div v-if="selectedTab === 1">
+      <p class="text-sm text-gray-500 mb-4">{{ filteredPending.length }} companies awaiting review</p>
+      <UTable :rows="filteredPending" :columns="pendingColumns" :loading="isLoadingPending">
+        <template #name-data="{ row }">
+          <span class="font-medium text-gray-900">{{ (row as Company).name }}</span>
+        </template>
+        <template #sector-data="{ row }">
+          <UBadge v-if="(row as Company).sector" color="blue" variant="subtle" size="xs">{{ (row as Company).sector }}</UBadge>
+          <span v-else class="text-gray-400 text-xs">—</span>
+        </template>
+        <template #stage-data="{ row }">
+          <UBadge v-if="(row as Company).stage" color="violet" variant="subtle" size="xs">{{ (row as Company).stage }}</UBadge>
+          <span v-else class="text-gray-400 text-xs">—</span>
+        </template>
+        <template #submitted-data="{ row }">
+          <span class="text-xs text-gray-500">
+            {{ new Date((row as Company).created_at ?? '').toLocaleDateString() }}
+          </span>
+        </template>
+        <template #actions-data="{ row }">
+          <div class="flex items-center gap-2">
+            <UButton :to="`/admin/companies/${(row as Company).id}`" size="xs" variant="ghost" color="gray">Edit</UButton>
+            <UButton size="xs" variant="ghost" color="green" @click="approveCompany(row as Company)">Approve</UButton>
+            <UButton size="xs" variant="ghost" color="red" icon="i-heroicons-trash-20-solid" @click="deleteCompany(row as Company)" />
           </div>
         </template>
       </UTable>
     </div>
 
     <!-- Pending Claims tab -->
-    <div v-if="selectedTab === 1">
+    <div v-if="selectedTab === 2">
       <div v-if="isLoadingClaims" class="flex justify-center py-12">
         <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 text-gray-400 animate-spin" />
       </div>
       <div v-else-if="!claims.length" class="flex flex-col items-center py-16 text-center">
         <UIcon name="i-heroicons-inbox-20-solid" class="w-10 h-10 text-gray-300 mb-3" />
         <p class="text-gray-500">No pending claims at this time.</p>
-      </div>
-      <div v-else class="flex flex-col gap-4">
-        <UCard
-          v-for="claim in claims"
-          :key="claim.id"
-          class="flex items-start justify-between gap-4"
-        >
-          <div>
-            <p class="font-medium text-gray-900">{{ claim.company_name ?? claim.company_id }}</p>
-            <p class="text-xs text-gray-500 mt-0.5">User: {{ claim.user_id }}</p>
-            <p v-if="claim.verification_note" class="text-sm text-gray-600 mt-1">
-              "{{ claim.verification_note }}"
-            </p>
-          </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <UBadge color="yellow" variant="subtle" size="xs">Pending</UBadge>
-          </div>
-        </UCard>
       </div>
     </div>
   </UContainer>
