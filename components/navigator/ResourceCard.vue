@@ -1,114 +1,106 @@
 <script setup lang="ts">
 import type { Resource } from '~/types/resource'
 
-const props = defineProps<{ resource: Resource }>()
+const props = defineProps<{
+  resource: Resource
+  suggested?: boolean
+}>()
 
-const displayIndustries = computed(() => props.resource.industries.slice(0, 3))
-const extraIndustriesCount = computed(() =>
-  Math.max(0, props.resource.industries.length - 3),
-)
+const displayIndustries = computed(() => props.resource.industries.slice(0, 2))
+const extraIndustriesCount = computed(() => Math.max(0, props.resource.industries.length - 2))
 </script>
 
 <template>
-  <UCard class="flex flex-col h-full">
-    <template #header>
-      <div class="flex items-start justify-between gap-2">
-        <h3 class="font-semibold text-gray-900 leading-snug">
-          <a
-            v-if="resource.link"
-            :href="resource.link"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="hover:text-primary-700 hover:underline transition-colors"
-          >
-            {{ resource.title }}
-          </a>
-          <span v-else>{{ resource.title }}</span>
-        </h3>
-        <UBadge v-if="!resource.link" color="gray" variant="subtle" size="xs" class="shrink-0">
-          No link
-        </UBadge>
-      </div>
-    </template>
+  <div
+    class="rounded-xl bg-white flex flex-col h-full overflow-hidden transition-shadow duration-200"
+    :class="suggested ? 'shadow-md hover:shadow-lg' : 'shadow-sm hover:shadow-md'"
+    style="border: 1px solid #e5e7eb;"
+  >
+    <!-- Top accent bar -->
+    <div
+      class="h-1 w-full shrink-0"
+      :style="suggested
+        ? 'background: linear-gradient(to right, var(--brand-green), var(--brand-green-bright))'
+        : 'background-color: var(--brand-green)'"
+    />
 
-    <div class="flex flex-col gap-3 flex-1">
+    <div class="p-4 flex flex-col flex-1 gap-3">
+      <!-- Title -->
+      <h3 class="font-semibold text-base leading-snug">
+        <a
+          v-if="resource.link"
+          :href="resource.link"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="transition-opacity hover:opacity-75"
+          style="color: var(--brand-navy)"
+        >
+          {{ resource.title }}
+        </a>
+        <span v-else style="color: var(--brand-navy)">{{ resource.title }}</span>
+      </h3>
+
       <!-- Description -->
-      <p
-        v-if="resource.description"
-        class="text-sm text-gray-600 line-clamp-3"
-      >
+      <p v-if="resource.description" class="text-sm text-gray-500 line-clamp-3 leading-relaxed">
         {{ resource.description }}
       </p>
 
-      <!-- Communities + Topics badges -->
-      <div v-if="resource.communities.length || resource.topics.length" class="flex flex-wrap gap-1">
-        <UBadge
-          v-for="c in resource.communities"
-          :key="c"
-          color="blue"
-          variant="subtle"
-          size="xs"
-        >
-          {{ c }}
-        </UBadge>
-        <UBadge
+      <!-- Topics (green) -->
+      <div v-if="resource.topics.length" class="flex flex-wrap gap-1">
+        <span
           v-for="t in resource.topics"
           :key="t"
-          color="green"
-          variant="subtle"
-          size="xs"
+          class="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-medium"
         >
           {{ t }}
-        </UBadge>
+        </span>
       </div>
 
-      <!-- Industries (gray, max 3 shown) -->
-      <div v-if="resource.industries.length" class="flex flex-wrap gap-1">
-        <UBadge
+      <!-- Industries (subtle gray) -->
+      <div v-if="displayIndustries.length" class="flex flex-wrap gap-1">
+        <span
           v-for="ind in displayIndustries"
           :key="ind"
-          color="gray"
-          variant="subtle"
-          size="xs"
+          class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500"
         >
           {{ ind }}
-        </UBadge>
-        <UBadge
+        </span>
+        <span
           v-if="extraIndustriesCount > 0"
-          color="gray"
-          variant="subtle"
-          size="xs"
+          class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-400"
         >
           +{{ extraIndustriesCount }} more
-        </UBadge>
+        </span>
       </div>
-    </div>
 
-    <template #footer>
-      <div class="flex items-center justify-between gap-2 flex-wrap">
+      <div class="flex-1" />
+
+      <!-- Footer -->
+      <div class="flex items-center justify-between gap-2 pt-3 border-t border-gray-100">
         <a
           v-if="resource.email"
           :href="`mailto:${resource.email}`"
-          class="text-sm text-primary-600 hover:underline truncate"
+          class="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
+          style="background-color: var(--brand-green-bright); color: #052e16"
         >
-          {{ resource.email }}
+          <UIcon name="i-heroicons-envelope-16-solid" class="w-3 h-3" />
+          Contact Resource
         </a>
         <span v-else class="flex-1" />
 
-        <UButton
+        <a
           v-if="resource.link"
-          :to="resource.link"
+          :href="resource.link"
           target="_blank"
           rel="noopener noreferrer"
-          size="xs"
-          color="primary"
-          variant="solid"
-          trailing-icon="i-heroicons-arrow-top-right-on-square-20-solid"
-          external
+          class="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
+          style="background-color: var(--brand-green-dark)"
         >
-          Visit Resource
-        </UButton>
+          Learn More
+          <UIcon name="i-heroicons-arrow-top-right-on-square-16-solid" class="w-3 h-3" />
+        </a>
+        <span v-else class="text-xs text-gray-400 italic">No link</span>
       </div>
-    </template>
-  </UCard>
+    </div>
+  </div>
 </template>

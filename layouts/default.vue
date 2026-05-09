@@ -1,12 +1,18 @@
 <script setup lang="ts">
 const user = useSupabaseUser()
 const route = useRoute()
+const supabase = useSupabaseClient()
 
 const isAdmin = computed(
   () =>
     user.value?.user_metadata?.role === 'admin' ||
     user.value?.app_metadata?.role === 'admin',
 )
+
+async function signOut() {
+  await supabase.auth.signOut()
+  navigateTo('/login')
+}
 
 const navLinks = [
   { label: 'Start Your Journey', to: '/' },
@@ -99,6 +105,15 @@ const socials = [
                 icon="i-heroicons-user-circle-20-solid"
               >
                 {{ user.email?.split('@')[0] }}
+              </UButton>
+              <UButton
+                size="sm"
+                variant="ghost"
+                color="gray"
+                icon="i-heroicons-arrow-right-on-rectangle-20-solid"
+                @click="signOut"
+              >
+                Sign out
               </UButton>
             </template>
           </div>
