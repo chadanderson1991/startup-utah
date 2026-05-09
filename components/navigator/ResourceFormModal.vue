@@ -83,7 +83,7 @@ const communityOptions = COMMUNITIES.filter(c => c !== 'Any')
       <template #header>
         <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-lg font-bold" style="color: var(--brand-navy)">Suggest a Resource</h2>
+            <h2 class="text-lg font-bold" style="color: var(--brand-navy)">Add a Resource</h2>
             <p class="text-sm text-gray-500 mt-0.5">
               Your suggestion will be reviewed before going live.
             </p>

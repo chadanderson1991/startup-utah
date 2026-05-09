@@ -57,7 +57,7 @@ function sectorColor(sector: string | null): string {
     </section>
 
     <!-- Content -->
-    <div style="background-color: #f7f9fc" class="min-h-screen pb-20">
+    <div style="background-color: var(--brand-navy)" class="min-h-screen pb-20">
       <UContainer class="max-w-5xl py-10 px-4">
 
         <!-- Loading -->
@@ -79,9 +79,9 @@ function sectorColor(sector: string | null): string {
           v-else-if="!watchlistItems?.length"
           class="flex flex-col items-center justify-center py-20 text-center"
         >
-          <UIcon name="i-heroicons-bookmark" class="w-16 h-16 text-gray-300 mb-4" />
-          <h2 class="text-xl font-bold text-gray-700 mb-2">No saved companies yet</h2>
-          <p class="text-gray-500 max-w-sm mb-6">
+          <UIcon name="i-heroicons-bookmark" class="w-16 h-16 mb-4" style="color: rgba(255,255,255,0.4)" />
+          <h2 class="text-xl font-bold text-white mb-2">No saved companies yet</h2>
+          <p class="max-w-sm mb-6" style="color: #a8b2d1">
             Browse the company map and bookmark companies you want to keep track of.
           </p>
           <UButton to="/map" color="primary">

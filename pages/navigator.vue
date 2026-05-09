@@ -164,7 +164,7 @@ const showProfilePrompt = computed(() =>
     <!-- Hero -->
     <section
       class="relative text-white py-14 px-4"
-      style="background-color: var(--brand-navy)"
+      style="background-color: var(--brand-navy); background-image: linear-gradient(rgba(13, 25, 45, 0.45), rgba(13, 25, 45, 0.45)), url('/brand/resources-bg.webp'); background-size: cover; background-position: center;"
     >
       <UContainer class="max-w-7xl">
         <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
@@ -195,7 +195,7 @@ const showProfilePrompt = computed(() =>
               style="background-color: var(--brand-green-bright); color: #052e16;"
               @click="showFormModal = true"
             >
-              {{ isAdmin ? 'Add Resource' : 'Suggest a Resource' }}
+              {{ isAdmin ? 'Add Resource' : 'Add a Resource' }}
             </UButton>
           </div>
         </div>
@@ -203,7 +203,7 @@ const showProfilePrompt = computed(() =>
     </section>
 
     <!-- Horizontal filter bar -->
-    <div class="bg-white border-b border-gray-200 shadow-sm sticky top-16 lg:top-[112px] z-20">
+    <div class="shadow-sm sticky top-16 lg:top-[112px] z-20" style="background-color: var(--brand-navy)">
       <UContainer class="max-w-7xl">
         <NavigatorResourceFilters
           :model-value="filters"
@@ -215,7 +215,7 @@ const showProfilePrompt = computed(() =>
     </div>
 
     <!-- Content -->
-    <div style="background-color: #f7f9fc" class="min-h-screen">
+    <div style="background-color: var(--brand-navy)" class="min-h-screen">
       <UContainer class="max-w-7xl py-8 px-4">
 
         <!-- Profile prompt for logged-in users with no profile data -->
@@ -238,7 +238,7 @@ const showProfilePrompt = computed(() =>
         <section v-if="visibleSuggestions.length" class="mb-12">
           <div class="flex items-center gap-3 mb-5">
             <div class="w-1 h-6 rounded-full" style="background-color: var(--brand-green)" />
-            <h2 class="text-xl font-bold" style="color: var(--brand-navy)">
+            <h2 class="text-xl font-bold text-white">
               Suggested for You
             </h2>
             <span
@@ -261,8 +261,8 @@ const showProfilePrompt = computed(() =>
         <!-- All Resources -->
         <section>
           <div v-if="visibleSuggestions.length" class="flex items-center gap-3 mb-5">
-            <div class="w-1 h-6 rounded-full bg-gray-300" />
-            <h2 class="text-xl font-bold text-gray-800">All Resources</h2>
+            <div class="w-1 h-6 rounded-full bg-white/40" />
+            <h2 class="text-xl font-bold text-white">All Resources</h2>
           </div>
           <NavigatorResourceGrid :resources="nonSuggestedResources" :is-loading="isLoading" />
         </section>

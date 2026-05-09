@@ -108,7 +108,7 @@ function jumpToStep(n: number) {
     <!-- ------------------------------------------------------------------ -->
     <section
       class="relative text-white py-16 px-4"
-      style="background-color: var(--brand-navy)"
+      style="background-color: var(--brand-navy); background-image: linear-gradient(rgba(13, 25, 45, 0.45), rgba(13, 25, 45, 0.45)), url('/brand/journey-page-header.webp'); background-size: cover; background-position: center;"
     >
       <UContainer class="max-w-7xl">
         <span
@@ -159,7 +159,7 @@ function jumpToStep(n: number) {
     <!-- ------------------------------------------------------------------ -->
     <!-- Phase sections                                                       -->
     <!-- ------------------------------------------------------------------ -->
-    <div style="background-color: #f7f9fc" class="pb-20">
+    <div style="background-color: var(--brand-navy)" class="pb-20">
       <UContainer class="max-w-7xl py-12 px-4">
 
         <div
@@ -168,7 +168,7 @@ function jumpToStep(n: number) {
           class="mb-14"
         >
           <!-- Phase heading row -->
-          <div class="border-t border-gray-200 pt-8 mb-6">
+          <div class="border-t border-white/15 pt-8 mb-6">
             <div class="flex flex-wrap items-baseline gap-3">
               <span
                 class="text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
@@ -176,11 +176,11 @@ function jumpToStep(n: number) {
               >
                 Phase {{ phase.number }}
               </span>
-              <h2 class="text-2xl font-extrabold" style="color: var(--brand-navy)">
+              <h2 class="text-2xl font-extrabold text-white">
                 {{ phase.label }}
               </h2>
             </div>
-            <p class="mt-1 text-sm text-gray-500">{{ phase.description }}</p>
+            <p class="mt-1 text-sm" style="color: #a8b2d1">{{ phase.description }}</p>
           </div>
 
           <!-- Step cards grid -->

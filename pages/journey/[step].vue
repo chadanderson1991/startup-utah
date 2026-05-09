@@ -226,7 +226,7 @@ function resourceLink(topics: string[]) {
     </div>
 
     <!-- Main content -->
-    <div style="background-color: #f7f9fc" class="min-h-screen pb-20">
+    <div style="background-color: var(--brand-navy)" class="min-h-screen pb-20">
       <UContainer class="max-w-4xl py-10 px-4">
 
         <!-- Sections: single full-width column -->
@@ -273,7 +273,7 @@ function resourceLink(topics: string[]) {
         </div>
 
         <!-- Bottom prev / next navigation -->
-        <div class="flex items-center justify-between mt-12 pt-8 border-t border-gray-200">
+        <div class="flex items-center justify-between mt-12 pt-8 border-t border-white/15">
           <NuxtLink
             v-if="prevStep"
             :to="`/journey/${prevStep}`"
@@ -286,8 +286,8 @@ function resourceLink(topics: string[]) {
               <UIcon name="i-heroicons-arrow-left-20-solid" class="w-4 h-4" style="color: var(--brand-green)" />
             </div>
             <div>
-              <p class="text-xs text-gray-400 font-medium">Previous</p>
-              <p class="text-sm font-bold" style="color: var(--brand-navy)">
+              <p class="text-xs font-medium" style="color: #a8b2d1">Previous</p>
+              <p class="text-sm font-bold text-white">
                 Step {{ prevStep }}: {{ JOURNEY_STEPS[prevStep - 1]?.title }}
               </p>
             </div>
@@ -300,8 +300,8 @@ function resourceLink(topics: string[]) {
             class="flex items-center gap-2 text-right group"
           >
             <div>
-              <p class="text-xs text-gray-400 font-medium">Next</p>
-              <p class="text-sm font-bold" style="color: var(--brand-navy)">
+              <p class="text-xs font-medium" style="color: #a8b2d1">Next</p>
+              <p class="text-sm font-bold text-white">
                 Step {{ nextStep }}: {{ JOURNEY_STEPS[nextStep - 1]?.title }}
               </p>
             </div>

@@ -109,8 +109,7 @@ const communityOptions = COMMUNITIES.filter(c => c !== 'Any')
       :popper="{ placement: 'bottom-end' }"
     >
       <UButton
-        variant="outline"
-        color="gray"
+        color="white"
         size="sm"
         icon="i-heroicons-arrow-down-tray-20-solid"
         trailing-icon="i-heroicons-chevron-down-20-solid"
@@ -128,7 +127,8 @@ const communityOptions = COMMUNITIES.filter(c => c !== 'Any')
         {{ activeFilterCount }} active
       </span>
       <button
-        class="text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors"
+        class="text-xs font-medium transition-colors hover:text-white"
+        style="color: #a8b2d1"
         @click="clearAll"
       >
         Clear all
