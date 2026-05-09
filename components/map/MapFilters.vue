@@ -145,8 +145,10 @@ const selectUi = {
         Clear all filters
       </button>
 
-      <!-- Company list -->
-      <div v-if="companies.length" class="flex flex-col gap-2">
+      <!-- Company list — only surfaced once the user narrows with at least
+           one filter, so the sidebar isn't dominated by a 200-row scroll on
+           initial load. Map markers themselves are unaffected and always show. -->
+      <div v-if="activeFilterCount > 0 && companies.length" class="flex flex-col gap-2">
         <div class="flex items-center justify-between">
           <span class="text-xs font-semibold uppercase tracking-wide" style="color: #a8b2d1">Companies</span>
           <span class="text-xs" style="color: #a8b2d1">
