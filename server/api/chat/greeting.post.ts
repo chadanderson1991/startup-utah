@@ -1,13 +1,13 @@
-import Groq from 'groq-sdk'
+import Anthropic from '@anthropic-ai/sdk'
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
-import { ENTREPRENEUR_JOURNEY } from '../../utils/entrepreneur-journey'
 import type { UserProfile, Business } from '~/types/profile'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const authUser = await serverSupabaseUser(event)
+
   if (!authUser) {
-    return { greeting: "Hi! I'm the Utah Startup Navigator. I'll help you find the right state programs and resources for your situation. What would you like to work on today?" }
+    return { greeting: "Hi! I'm the Utah Startup Navigator. Tell me about your business and I'll point you to the right state programs and resources." }
   }
 
   const { businessId } = await readBody<{ businessId?: string }>(event)
@@ -24,49 +24,33 @@ export default defineEventHandler(async (event) => {
   const business = bizRes.data as Business | null
 
   const contextLines: string[] = []
-  if (profile?.full_name) contextLines.push(`User's name: ${profile.full_name}`)
-  if (profile?.county)    contextLines.push(`County: ${profile.county}`)
-  if (profile?.industry)  contextLines.push(`Industry: ${profile.industry}`)
-  if (profile?.communities?.length) contextLines.push(`Communities: ${profile.communities.join(', ')}`)
-  if (profile?.bio)       contextLines.push(`Bio: ${profile.bio}`)
-  if (business) {
-    contextLines.push(`Active business: ${business.name}`)
-    contextLines.push(`Business stage: ${business.stage}`)
-    contextLines.push(`Currently on journey step ${business.journey_step} of 19`)
-    if (business.description) contextLines.push(`Business description: ${business.description}`)
-    if (business.notes)       contextLines.push(`Owner notes: ${business.notes}`)
+  if (profile?.full_name)           contextLines.push(`Name: ${profile.full_name}`)
+  if (business?.name)               contextLines.push(`Business: ${business.name}`)
+  if (business?.stage)              contextLines.push(`Stage: ${business.stage}`)
+  if (business?.journey_step)       contextLines.push(`Journey step: ${business.journey_step} of 19`)
+  if (business?.description)        contextLines.push(`Description: ${business.description}`)
+
+  // No profile data available — return a static greeting to save tokens entirely
+  if (!contextLines.length) {
+    return { greeting: "Welcome back! I'm here to help you find Utah state resources for your business. What are you working on?" }
   }
 
-  const groq = new Groq({ apiKey: config.groqApiKey as string })
-
-  const systemPrompt = `You are the Utah Startup Navigator. Generate a short, personalized welcome for a returning user.
-
-${ENTREPRENEUR_JOURNEY}
-
-Rules:
-- Greet by name if provided, otherwise just "Welcome back!"
-- One sentence max referencing their business and current journey step
-- End immediately with a single open question like "What would you like to work on?"
-- 2 sentences total — no more
-- No bullet points, no headers, no filler phrases like "Great to see you" or "I'm here to help"`
-
-  const userMessage = contextLines.length
-    ? `User context:\n${contextLines.join('\n')}`
-    : 'No profile information available yet.'
+  const anthropic = new Anthropic({ apiKey: config.anthropicApiKey as string })
 
   try {
-    const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 256,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
+    const completion = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 80,
+      system: 'You are the Utah Startup Navigator. Write a 1-2 sentence personalized welcome for a returning user. Greet by first name if provided. Reference their business name and current journey step number if available. End with one short open question like "What would you like to work on?" No filler phrases.',
+      messages: [{ role: 'user', content: contextLines.join('\n') }],
     })
-    const greeting = completion.choices[0]?.message?.content?.trim()
-      ?? "Welcome back! I'm here to help you navigate Utah's startup resources. What would you like to work on today?"
-    return { greeting }
+
+    const greeting = completion.content[0]?.type === 'text'
+      ? completion.content[0].text.trim()
+      : null
+
+    return { greeting: greeting ?? "Welcome back! What would you like to work on today?" }
   } catch {
-    return { greeting: "Welcome back! I'm here to help you navigate Utah's startup resources. What would you like to work on today?" }
+    return { greeting: "Welcome back! I'm here to help you navigate Utah's startup resources. What would you like to work on?" }
   }
 })
