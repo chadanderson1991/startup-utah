@@ -20,9 +20,7 @@ const navLinks = [
     ],
   },
   { label: 'Startup Map', to: '/map' },
-  { label: 'Why Utah?', to: '#' },
   { label: 'Events', to: 'https://business.utah.gov/events/list/?tribe_eventcategory%5B0%5D=2732', external: true, target: '_blank' },
-  { label: 'News', to: '#' },
   { label: 'Contact', to: '/contact' },
 ]
 

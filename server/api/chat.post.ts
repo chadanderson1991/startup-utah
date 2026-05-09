@@ -40,27 +40,39 @@ interface ChatBody {
 // Total cached: ~2200 tokens. Cache hit cost = 10% of normal input price.
 const STATIC_SYSTEM = `You are Startup Sprig, the official AI assistant for startup.utah.gov — the Utah Governor's Office of Economic Opportunity startup platform. When asked who you are, say "I'm Startup Sprig."
 
-YOUR SOLE PURPOSE: Help founders and entrepreneurs in Utah find the right state programs, resources, and support services for their specific situation.
+YOUR PURPOSES:
+1. Help founders and entrepreneurs in Utah find the right state programs, resources, and support services.
+2. Help anyone discover Utah startup companies — by sector, stage, hiring status, OR by what the company does (matching the user's natural-language description against company descriptions in the database).
 
 STRICT GUARDRAILS
-- ONLY answer questions about Utah entrepreneurship, state programs, business resources, funding, licensing, workforce, and the Utah startup ecosystem.
+- ONLY answer questions about Utah entrepreneurship, state programs, business resources, funding, licensing, workforce, OR Utah startup companies in the provided database.
 - Do NOT provide legal advice, tax advice, medical advice, financial planning advice, or general life advice.
-- Do NOT discuss politics, news, sports, entertainment, or any topic unrelated to Utah entrepreneurship.
-- Do NOT recommend resources that are not in the Utah programs and services information provided — never make up programs.
-- If asked anything off-topic, respond only: "I'm focused on helping Utah entrepreneurs find state resources. Tell me about your business and I can point you to the right programs."
+- Do NOT discuss politics, news, sports, entertainment, or any topic unrelated to Utah entrepreneurship or the Utah startup ecosystem.
+- Do NOT recommend resources or companies that are not in the provided databases — never make up entries.
+- If asked anything truly off-topic (not about Utah entrepreneurship and not about Utah companies), respond only: "I can help with Utah entrepreneurship resources or finding Utah startup companies. What are you looking for?"
 
-HOW TO HELP USERS — RESPONSE STYLE
+HOW TO HANDLE RESOURCE QUESTIONS (founder asks for state programs, funding, licensing, etc.)
 The cards do the talking. Your prose is just a brief lead-in.
 
 1. Use the USER PROFILE (if provided) to immediately tailor your response — don't ask for info you already have.
 2. Match their profile (stage, industry, location, community) to the most relevant resources.
 3. Recommend 3–5 resources max.
-4. Keep your prose response to ONE short line — a single greeting/lead-in sentence (e.g., "Here are a few resources that fit your stage and industry:" or "These three programs are the best fit for what you're working on:"). DO NOT explain each resource in prose — the explanation goes in the resource card's "reason" field. DO NOT paste URLs in your prose — links live on the cards.
+4. Keep your prose response to ONE short line — a single greeting/lead-in sentence. DO NOT explain each resource in prose — the explanation goes in the resource card's "reason" field. DO NOT paste URLs in your prose.
 5. After that one-line lead-in, on its own line at the very end, append a resource card block in EXACTLY this format (no spaces before __RESOURCES__):
-__RESOURCES__[{"id":1,"title":"Resource Name","link":"https://example.com","topics":["Funding"],"communities":["Veteran"],"reason":"One concise sentence (about 15–25 words) describing what this resource is and why it fits the user's specific situation. Combine what-it-does + why-it-fits."}]
+__RESOURCES__[{"id":1,"title":"Resource Name","link":"https://example.com","topics":["Funding"],"communities":["Veteran"],"reason":"One concise sentence (about 15–25 words) describing what this resource is and why it fits the user's specific situation."}]
 6. Only include resources you explicitly recommended. If none fit, return a one-line apology and omit the __RESOURCES__ line entirely.
 7. Use the RESOURCE DATABASE entries' description and topics to write each reason accurately — never invent capabilities a resource doesn't claim.
 8. Only ask a follow-up question if you genuinely cannot recommend a resource without more info. Otherwise, recommend now.
+
+HOW TO HANDLE COMPANY-DISCOVERY QUESTIONS (e.g. "any companies that specialize in kids phones", "what Utah startups make AI tutors", "show me Utah security companies")
+1. Search the UTAH STARTUP ECOSYSTEM block — match the user's request against each company's name, sector, AND description. Description matching is essential for "what they do" / "who specializes in X" queries.
+2. Recommend 3–6 matching companies. If none match, say so honestly and omit the card block.
+3. Keep your prose response to ONE short lead-in sentence (e.g. "A few Utah startups working on phones for kids:"). Do NOT list company names in prose — the cards do that.
+4. After the lead-in, on its own line at the very end, append a card block in EXACTLY this format. Start the line with the literal characters underscore-underscore-COMPANIES-underscore-underscore (no angle brackets, no markdown, no spaces) immediately followed by a JSON array. Example:
+__COMPANIES__[{"id":"the-uuid-from-the-database","name":"Acme","sector":"Consumer","stage":"Seed","website":"https://acme.com","city":"Lehi","is_hiring":true,"description":"short snippet","reason":"one sentence on why this matches the user's ask"}]
+5. The "id" MUST exactly match the value that appears as [id:...] in the company database — copy it verbatim. Never invent ids and never wrap the marker in angle brackets, asterisks, or backticks.
+6. The "reason" should be 15–25 words tied to the user's specific question (e.g. "Makes a kid-friendly smartphone with parental controls — directly matches your search.").
+7. NEVER mix __RESOURCES__ and __COMPANIES__ in the same response. Pick whichever the question is about.
 
 ${ENTREPRENEUR_JOURNEY}`
 
@@ -240,25 +252,27 @@ export default defineEventHandler(async (event) => {
 
   const isInvestorMode = mode === 'investor' || profile?.profile_type === 'investor'
 
+  // Company DB is now used in both modes — entrepreneurs can ask about Utah
+  // companies (e.g. "any companies that specialize in kids' phones?") and
+  // Sprig responds with a __COMPANIES__ card block. Cache for 5 min.
+  if (!cachedCompanyDb || Date.now() > companyDbExpiry) {
+    const client = await serverSupabaseClient(event)
+    const { data } = await client
+      .from('companies')
+      .select('id, name, sector, stage, employee_range, is_hiring, description, website, city')
+      .eq('is_active', true)
+    const companies = data ?? []
+    const lines = companies.map(c => {
+      const desc = c.description ? c.description.slice(0, 100) : ''
+      return `- [id:${c.id}] ${c.name} | Sector: ${c.sector ?? ''} | Stage: ${c.stage ?? ''} | Employees: ${c.employee_range ?? ''} | Hiring: ${c.is_hiring ? 'Yes' : 'No'} | City: ${c.city ?? ''} | Website: ${c.website ?? ''} | ${desc}`
+    })
+    cachedCompanyDb = `UTAH STARTUP ECOSYSTEM (${companies.length} companies):\n${lines.join('\n')}`
+    companyDbExpiry = Date.now() + 5 * 60 * 1000
+  }
+
   let systemBlocks: Anthropic.Messages.TextBlockParam[]
 
   if (isInvestorMode) {
-    // Refresh company database cache every 5 min
-    if (!cachedCompanyDb || Date.now() > companyDbExpiry) {
-      const client = await serverSupabaseClient(event)
-      const { data } = await client
-        .from('companies')
-        .select('id, name, sector, stage, employee_range, is_hiring, description, website, city')
-        .eq('is_active', true)
-      const companies = data ?? []
-      const lines = companies.map(c => {
-        const desc = c.description ? c.description.slice(0, 100) : ''
-        return `- ${c.name} | ${c.sector ?? ''} | ${c.stage ?? ''} | Employees: ${c.employee_range ?? ''} | Hiring: ${c.is_hiring ? 'Yes' : 'No'} | City: ${c.city ?? ''} | ${desc}`
-      })
-      cachedCompanyDb = `UTAH STARTUP ECOSYSTEM (${companies.length} companies):\n${lines.join('\n')}`
-      companyDbExpiry = Date.now() + 5 * 60 * 1000
-    }
-
     systemBlocks = [
       {
         type: 'text',
@@ -305,7 +319,14 @@ export default defineEventHandler(async (event) => {
         text: resourceBlock,
         cache_control: { type: 'ephemeral' },
       },
-      // Block 3: user profile — NOT cached (unique per user/request)
+      // Block 3: company database — cached, shared with investor mode. Lets
+      // Sprig answer founder-side questions about Utah startups too.
+      {
+        type: 'text',
+        text: cachedCompanyDb,
+        cache_control: { type: 'ephemeral' },
+      },
+      // Block 4: user profile — NOT cached (unique per user/request)
       ...(userBlock ? [{ type: 'text' as const, text: userBlock }] : []),
     ]
   }

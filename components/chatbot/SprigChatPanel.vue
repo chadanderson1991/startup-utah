@@ -4,12 +4,71 @@ import { useChat, type UserContext } from '~/composables/useChat'
 import { useActiveBusiness } from '~/composables/useActiveBusiness'
 import { useSprigPanelVisibility } from '~/composables/useSprigPanelVisibility'
 import { useQuickStartCards } from '~/composables/useQuickStartCards'
+import { SECTORS, STAGES, EMPLOYEE_RANGES } from '~/lib/constants'
 
 const user = useSupabaseUser()
 const inputText = ref('')
 const messagesContainer = ref<HTMLDivElement | null>(null)
 const panelRoot = ref<HTMLDivElement | null>(null)
 const sprigPanelInView = useSprigPanelVisibility()
+
+// Anonymous-user flow state. Only meaningful when !user.value — drives the
+// pill set + greeting text. 'initial' shows the 4 top-level pills; the others
+// route into branched experiences. Authenticated users skip this entirely.
+type AnonFlow = 'initial' | 'investor' | 'founder' | 'browsing'
+const anonFlow = ref<AnonFlow>('initial')
+
+const ANON_GREETINGS: Record<AnonFlow, string> = {
+  initial: "Hi! I'm Startup Sprig. I'll help you find the right state programs and resources for your specific situation. Sign in or create a profile and I can tailor my recommendations to your business.",
+  investor: "Great! Tell me what kinds of Utah companies you'd like to discover and I'll drop you on the startup map with those filters pre-applied.",
+  founder: "Awesome — let's get you oriented. Where are you in your business journey?",
+  browsing: "Sounds good. Let me know if you're browsing for anything specific and I'll see how I can help.",
+}
+
+// Investor sub-flow selections — drive the /map URL filters.
+const investorSectors = ref<string[]>([])
+const investorStages = ref<string[]>([])
+const investorTeamSizes = ref<string[]>([])
+
+const investorMapUrl = computed(() => {
+  const params = new URLSearchParams()
+  if (investorSectors.value.length) params.set('sectors', investorSectors.value.join(','))
+  if (investorStages.value.length) params.set('stages', investorStages.value.join(','))
+  if (investorTeamSizes.value.length) params.set('employee_ranges', investorTeamSizes.value.join(','))
+  const qs = params.toString()
+  return qs ? `/map?${qs}` : '/map'
+})
+
+// Build a natural-language query from the investor chip selections and
+// send it to Sprig (in investor mode — see profileMode below). Sprig's
+// investor system prompt + injected company DB will return the matches.
+function findCompaniesFromSelections() {
+  const parts: string[] = []
+  if (investorSectors.value.length)
+    parts.push(`in the ${investorSectors.value.join(', ')} sector${investorSectors.value.length > 1 ? 's' : ''}`)
+  if (investorStages.value.length)
+    parts.push(`at the ${investorStages.value.join(', ')} stage${investorStages.value.length > 1 ? 's' : ''}`)
+  if (investorTeamSizes.value.length)
+    parts.push(`with a team size of ${investorTeamSizes.value.join(' or ')}`)
+
+  const query = parts.length
+    ? `Find me Utah startups ${parts.join(' ')}. List the top matches with their sector, stage, and a one-line description.`
+    : 'List a handful of interesting Utah startups across different sectors and stages.'
+  send(query)
+}
+
+type InvestorFilterKey = 'sectors' | 'stages' | 'teamSizes'
+function toggleInvestor(key: InvestorFilterKey, value: string) {
+  // Refs are auto-unwrapped when passed through a template handler, so we
+  // dispatch to the right ref by key here instead of taking the ref itself.
+  const target =
+    key === 'sectors' ? investorSectors
+    : key === 'stages' ? investorStages
+    : investorTeamSizes
+  target.value = target.value.includes(value)
+    ? target.value.filter(v => v !== value)
+    : [...target.value, value]
+}
 
 // Shared profile + businesses + active-business state (auth-aware loading is
 // handled inside the composable, so the panel has business context as soon as
@@ -19,8 +78,12 @@ const activeBusinessId = computed(() => activeBusiness.value?.id ?? null)
 
 // Investor mode — drives both pill set (via useQuickStartCards) and the
 // `mode` parameter sent with each chat message.
+// Anonymous users who picked "I am an investor" in the welcome flow also
+// route through investor mode so Sprig has the company DB + the right
+// system prompt (entrepreneur mode would refuse company-listing queries).
 const profileMode = computed(() =>
-  profile.value?.profile_type === 'investor'
+  profile.value?.profile_type === 'investor' ||
+  (!user.value && anonFlow.value === 'investor')
     ? 'investor' as const
     : 'entrepreneur' as const,
 )
@@ -30,6 +93,15 @@ const userContext = ref<UserContext>({
 })
 
 const { messages, isStreaming, sendMessage, clearMessages } = useChat()
+
+function chooseAnonFlow(flow: AnonFlow) {
+  anonFlow.value = flow
+  // Update the greeting bubble to match the new stage. Authenticated users
+  // get their personalized greeting elsewhere, so we only touch this when anon.
+  if (!user.value) {
+    messages.value[0].content = ANON_GREETINGS[flow]
+  }
+}
 
 const greetingFetched = ref(false)
 async function fetchPersonalizedGreeting() {
@@ -169,6 +241,11 @@ function handleKeydown(e: KeyboardEvent) {
 function handleClear() {
   clearMessages()
   greetingFetched.value = false
+  // Reset anonymous flow back to the top-level pill set.
+  anonFlow.value = 'initial'
+  investorSectors.value = []
+  investorStages.value = []
+  investorTeamSizes.value = []
   if (user.value) fetchPersonalizedGreeting()
 }
 
@@ -245,26 +322,141 @@ watch(messages, async () => {
             />
           </div>
 
-          <!-- Pills — flex-wrap so each pill sizes to its label -->
-          <div class="flex-1 w-full flex flex-wrap gap-2 content-start">
-            <template v-for="card in quickStartCards" :key="card.label">
-              <NuxtLink
-                v-if="card.to"
-                :to="card.to"
-                class="sprig-pill no-underline"
-              >
-                <span>{{ card.label }}</span>
+          <!-- Right column: flow-dependent content -->
+          <div class="flex-1 w-full">
+
+            <!-- Anonymous: top-level "who are you?" pills -->
+            <div
+              v-if="!user && anonFlow === 'initial'"
+              class="flex flex-wrap gap-2 content-start"
+            >
+              <button class="sprig-pill" @click="chooseAnonFlow('investor')">I am an investor</button>
+              <button class="sprig-pill" @click="chooseAnonFlow('founder')">I am a founder</button>
+              <button class="sprig-pill" @click="chooseAnonFlow('browsing')">I am just browsing</button>
+              <NuxtLink to="/login" class="sprig-pill no-underline">
+                <span>Sign in / Create profile</span>
                 <UIcon name="i-heroicons-arrow-top-right-on-square" class="w-4 h-4 ml-1.5 shrink-0" />
               </NuxtLink>
+            </div>
+
+            <!-- Anonymous: investor sub-flow (multi-select chips) -->
+            <div v-else-if="!user && anonFlow === 'investor'" class="flex flex-col gap-4">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide mb-2 text-white/70">
+                  Sector
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                  <button
+                    v-for="s in SECTORS"
+                    :key="s"
+                    class="sprig-chip"
+                    :class="{ 'sprig-chip--active': investorSectors.includes(s) }"
+                    @click="toggleInvestor('sectors', s)"
+                  >
+                    {{ s }}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide mb-2 text-white/70">
+                  Stage
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                  <button
+                    v-for="s in STAGES"
+                    :key="s"
+                    class="sprig-chip"
+                    :class="{ 'sprig-chip--active': investorStages.includes(s) }"
+                    @click="toggleInvestor('stages', s)"
+                  >
+                    {{ s }}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide mb-2 text-white/70">
+                  Team Size
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                  <button
+                    v-for="r in EMPLOYEE_RANGES"
+                    :key="r"
+                    class="sprig-chip"
+                    :class="{ 'sprig-chip--active': investorTeamSizes.includes(r) }"
+                    @click="toggleInvestor('teamSizes', r)"
+                  >
+                    {{ r }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-2 items-center pt-1">
+                <button
+                  type="button"
+                  class="sprig-pill"
+                  :disabled="isStreaming"
+                  @click="findCompaniesFromSelections"
+                >
+                  <UIcon name="i-heroicons-magnifying-glass-20-solid" class="w-4 h-4 mr-1.5 shrink-0" />
+                  <span>Find companies</span>
+                </button>
+                <NuxtLink :to="investorMapUrl" class="sprig-pill no-underline">
+                  <span>View companies on the map</span>
+                  <UIcon name="i-heroicons-arrow-right-20-solid" class="w-4 h-4 ml-1.5 shrink-0" />
+                </NuxtLink>
+                <button
+                  type="button"
+                  class="text-xs font-semibold text-white/70 hover:text-white transition-colors"
+                  @click="chooseAnonFlow('initial')"
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+
+            <!-- Anonymous: browsing — no pills, just a quiet back link -->
+            <div v-else-if="!user && anonFlow === 'browsing'">
               <button
-                v-else
-                :disabled="isStreaming"
-                class="sprig-pill"
-                @click="send(card.message!)"
+                type="button"
+                class="text-xs font-semibold text-white/70 hover:text-white transition-colors"
+                @click="chooseAnonFlow('initial')"
               >
-                {{ card.label }}
+                Back
               </button>
-            </template>
+            </div>
+
+            <!-- Authenticated users + anonymous founder flow: existing pills -->
+            <div v-else class="flex flex-wrap gap-2 content-start">
+              <template v-for="card in quickStartCards" :key="card.label">
+                <NuxtLink
+                  v-if="card.to"
+                  :to="card.to"
+                  class="sprig-pill no-underline"
+                >
+                  <span>{{ card.label }}</span>
+                  <UIcon name="i-heroicons-arrow-top-right-on-square" class="w-4 h-4 ml-1.5 shrink-0" />
+                </NuxtLink>
+                <button
+                  v-else
+                  :disabled="isStreaming"
+                  class="sprig-pill"
+                  @click="send(card.message!)"
+                >
+                  {{ card.label }}
+                </button>
+              </template>
+              <button
+                v-if="!user && anonFlow === 'founder'"
+                type="button"
+                class="text-xs font-semibold text-white/70 hover:text-white transition-colors w-full mt-1"
+                @click="chooseAnonFlow('initial')"
+              >
+                Back
+              </button>
+            </div>
+
           </div>
         </div>
 
@@ -304,6 +496,15 @@ watch(messages, async () => {
                 class="w-full sm:w-[45%]"
               >
                 <ChatbotChatResourceCard :resource="r" />
+              </div>
+            </div>
+            <div v-if="msg.companies?.length" class="w-full mt-2 flex flex-wrap gap-2">
+              <div
+                v-for="c in msg.companies"
+                :key="c.id"
+                class="w-full sm:w-[48%]"
+              >
+                <ChatbotChatCompanyCard :company="c" />
               </div>
             </div>
           </div>
@@ -352,6 +553,31 @@ watch(messages, async () => {
 </template>
 
 <style scoped>
+/* Multi-select chips for the investor sub-flow */
+.sprig-chip {
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.sprig-chip:hover {
+  background-color: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+.sprig-chip--active {
+  background-color: #ffffff;
+  color: #0d192d;
+  border-color: #ffffff;
+}
+.sprig-chip--active:hover {
+  background-color: #ffffff;
+  color: #0d192d;
+}
+
 /* Custom scrollbar — 4px amber thumb, transparent track, no buttons */
 .chat-scroll {
   scrollbar-width: thin;

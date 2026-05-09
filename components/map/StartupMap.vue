@@ -2,8 +2,25 @@
 import { SECTOR_COLORS, SECTOR_COLOR_DEFAULT } from '~/lib/sector-colors'
 import type { Company } from '~/types/company'
 
-const props = defineProps<{ companies: Company[] }>()
+const props = defineProps<{
+  companies: Company[]
+  focusCompanyId?: string | null
+  selectedCompanyId?: string | null
+}>()
 const emit = defineEmits<{ (e: 'company-selected', company: Company | null): void }>()
+
+// Inner-circle DOM nodes keyed by company id. We need direct refs so the
+// selection watcher can apply highlight styles to one marker's interior
+// without overriding Mapbox's translate3d positioning on the outer element.
+const innerEls = new Map<string, HTMLElement>()
+
+// Visual constants for the selected-marker highlight.
+const SELECTED_SCALE = 1.5
+const SELECTED_HOVER_SCALE = 1.6
+const SELECTED_SHADOW =
+  '0 0 0 3px rgb(255, 174, 0), 0 6px 16px rgba(255, 174, 0, 0.55), 0 2px 5px rgba(0, 0, 0, 0.3)'
+const DEFAULT_SHADOW = '0 2px 5px rgba(0, 0, 0, 0.25)'
+const HOVER_SHADOW = '0 3px 8px rgba(0,0,0,0.35)'
 
 const config = useRuntimeConfig()
 const brandfetchClientId = config.public.brandfetchClientId as string
@@ -35,35 +52,49 @@ function createMarkerElement(featureProps: any): HTMLElement {
   const sectorColor =
     SECTOR_COLORS[featureProps.sector as keyof typeof SECTOR_COLORS] ||
     SECTOR_COLOR_DEFAULT
+  const id = String(featureProps.id ?? '')
 
   // Outer wrapper — Mapbox writes its translate3d() positioning to this element.
   // Don't touch its `transform` style, or the marker will jump to the map origin.
   const el = document.createElement('div')
   el.style.cssText = 'width: 36px; height: 36px; cursor: pointer;'
 
-  // Inner element holds the visuals + hover transforms.
+  // Inner element holds the visuals + hover/selected transforms.
   const inner = document.createElement('div')
   inner.style.cssText = `
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+    box-shadow: ${DEFAULT_SHADOW};
     border: 2px solid ${sectorColor};
     background-color: ${sectorColor};
     overflow: hidden;
-    transition: transform 120ms ease, box-shadow 120ms ease;
+    transition: transform 160ms ease, box-shadow 160ms ease;
     display: flex; align-items: center; justify-content: center;
   `
+
+  // Hover handlers respect the selected state — a selected marker stays
+  // bumped at SELECTED_SCALE on mouse-out instead of springing back to 1.
   el.addEventListener('mouseenter', () => {
-    inner.style.transform = 'scale(1.12)'
-    inner.style.boxShadow = '0 3px 8px rgba(0,0,0,0.35)'
-    el.style.zIndex = '1'
+    const isSelected = props.selectedCompanyId === id
+    inner.style.transform = `scale(${isSelected ? SELECTED_HOVER_SCALE : 1.12})`
+    inner.style.boxShadow = isSelected ? SELECTED_SHADOW : HOVER_SHADOW
+    el.style.zIndex = isSelected ? '11' : '1'
   })
   el.addEventListener('mouseleave', () => {
-    inner.style.transform = 'scale(1)'
-    inner.style.boxShadow = '0 2px 5px rgba(0,0,0,0.25)'
-    el.style.zIndex = ''
+    const isSelected = props.selectedCompanyId === id
+    inner.style.transform = isSelected ? `scale(${SELECTED_SCALE})` : 'scale(1)'
+    inner.style.boxShadow = isSelected ? SELECTED_SHADOW : DEFAULT_SHADOW
+    el.style.zIndex = isSelected ? '10' : ''
   })
+
+  // If this marker is created already-selected (e.g. URL-focus landed before
+  // the marker existed), apply highlight styles immediately.
+  if (props.selectedCompanyId === id) {
+    inner.style.transform = `scale(${SELECTED_SCALE})`
+    inner.style.boxShadow = SELECTED_SHADOW
+    el.style.zIndex = '10'
+  }
 
   const domain = domainFromUrl(featureProps.website)
   if (domain && brandfetchClientId) {
@@ -80,6 +111,7 @@ function createMarkerElement(featureProps: any): HTMLElement {
   }
 
   el.appendChild(inner)
+  innerEls.set(id, inner)
   return el
 }
 
@@ -117,6 +149,7 @@ function updateMarkers() {
     if (!seen.has(id)) {
       marker.remove()
       markersOnScreen.delete(id)
+      innerEls.delete(id)
     }
   }
 }
@@ -246,10 +279,56 @@ function flyToCompany(lat: number, lng: number) {
 }
 
 defineExpose({ flyToCompany })
+// Fly to a company when the parent passes a focus id (e.g. from a chat
+// company-card click that navigates to /map?focus=<id>). Wait until we have
+// both the map instance AND the company in our list; either side can arrive
+// first depending on cache state.
+watch(
+  () => [props.focusCompanyId, props.companies] as const,
+  ([focusId, list]) => {
+    if (!map || !focusId) return
+    const target = list.find(c => c.id === focusId)
+    if (!target || target.lat == null || target.lng == null) return
+    map.flyTo({
+      center: [target.lng, target.lat],
+      zoom: Math.max(map.getZoom(), 13),
+      essential: true,
+    })
+  },
+  { immediate: true },
+)
+
+// Apply / remove the selected highlight when the parent toggles selection.
+// Hover handlers also read props.selectedCompanyId, so the bumped scale
+// "sticks" even after a mouse leaves the selected marker.
+watch(
+  () => props.selectedCompanyId,
+  (newId, oldId) => {
+    if (oldId && oldId !== newId) {
+      const prev = innerEls.get(oldId)
+      if (prev) {
+        prev.style.transform = 'scale(1)'
+        prev.style.boxShadow = DEFAULT_SHADOW
+      }
+      const prevMarker = markersOnScreen.get(oldId)
+      if (prevMarker?.getElement) prevMarker.getElement().style.zIndex = ''
+    }
+    if (newId) {
+      const cur = innerEls.get(newId)
+      if (cur) {
+        cur.style.transform = `scale(${SELECTED_SCALE})`
+        cur.style.boxShadow = SELECTED_SHADOW
+      }
+      const curMarker = markersOnScreen.get(newId)
+      if (curMarker?.getElement) curMarker.getElement().style.zIndex = '10'
+    }
+  },
+)
 
 onUnmounted(() => {
   for (const marker of markersOnScreen.values()) marker.remove()
   markersOnScreen.clear()
+  innerEls.clear()
   map?.remove()
 })
 </script>

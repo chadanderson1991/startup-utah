@@ -207,8 +207,24 @@ watch(profileMode, (newMode, oldMode) => {
           <span class="text-white font-semibold text-sm">Startup Sprig</span>
         </div>
         <div class="flex items-center gap-1">
-          <UButton icon="i-heroicons-arrow-path" size="xs" variant="ghost" color="white" title="Start over" @click="handleClear" />
-          <UButton icon="i-heroicons-x-mark" size="xs" variant="ghost" color="white" title="Close" @click="close" />
+          <button
+            type="button"
+            class="sprig-header-btn"
+            title="Start over"
+            aria-label="Start over"
+            @click="handleClear"
+          >
+            <UIcon name="i-heroicons-arrow-path" class="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            class="sprig-header-btn"
+            title="Close"
+            aria-label="Close"
+            @click="close"
+          >
+            <UIcon name="i-heroicons-x-mark" class="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -261,6 +277,20 @@ watch(profileMode, (newMode, oldMode) => {
                 class="w-[45%]"
               >
                 <ChatbotChatResourceCard :resource="r" />
+              </div>
+            </div>
+
+            <!-- Company cards -->
+            <div
+              v-if="msg.companies?.length"
+              class="w-full mt-2 flex flex-wrap gap-2"
+            >
+              <div
+                v-for="c in msg.companies"
+                :key="c.id"
+                class="w-full"
+              >
+                <ChatbotChatCompanyCard :company="c" />
               </div>
             </div>
           </div>
@@ -319,6 +349,18 @@ watch(profileMode, (newMode, oldMode) => {
         </div>
     </div>
 
+    <!-- Greeting bubble — small "May I help?" cue above the launcher.
+         Visible whenever the launcher is shown and the popup isn't already open. -->
+    <button
+      v-if="showToggleButton && !isOpen"
+      type="button"
+      class="sprig-greet-bubble"
+      aria-label="Open Startup Sprig"
+      @click="toggle"
+    >
+      May I help?
+    </button>
+
     <!-- Toggle button — Sprig mascot (hidden while the inline SprigChatPanel
          is on-screen) -->
     <button
@@ -364,6 +406,67 @@ watch(profileMode, (newMode, oldMode) => {
   user-select: none;
   /* Keep Sprig readable against light page backgrounds without putting him in a circle */
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25));
+}
+
+/* Header icon buttons (start-over + close) — solid white instead of the
+   washed-out NuxtUI ghost-white default. */
+.sprig-header-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.sprig-header-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+.sprig-header-btn:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* "May I help?" bubble above the launcher */
+.sprig-greet-bubble {
+  position: relative;
+  margin-bottom: 0.4rem;
+  margin-right: 0.75rem;
+  padding: 0.5rem 0.9rem;
+  background: #ffffff;
+  color: var(--brand-navy, #0d192d);
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 1px solid rgba(13, 25, 45, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  white-space: nowrap;
+  animation: sprigGreetIn 360ms ease-out;
+}
+.sprig-greet-bubble:hover {
+  background: #f9fafb;
+}
+/* Speech-bubble tail pointing down toward the launcher */
+.sprig-greet-bubble::after {
+  content: '';
+  position: absolute;
+  right: 1.2rem;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border-right: 1px solid rgba(13, 25, 45, 0.08);
+  border-bottom: 1px solid rgba(13, 25, 45, 0.08);
+  transform: rotate(45deg);
+}
+@keyframes sprigGreetIn {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0)   scale(1); }
 }
 
 /* Business selector dropdown on the dark panel */
