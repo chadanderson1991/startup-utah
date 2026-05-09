@@ -1,25 +1,21 @@
 <script setup lang="ts">
 import { SECTORS, STAGES, EMPLOYEE_RANGES } from '~/lib/constants'
-import type { CompanyFilters } from '~/types/company'
+import { SECTOR_COLORS, SECTOR_COLOR_DEFAULT } from '~/lib/sector-colors'
+import type { CompanyFilters, Company } from '~/types/company'
 
 const props = defineProps<{
   modelValue: CompanyFilters
   count: number
+  companies: Company[]
 }>()
+
 const emit = defineEmits<{
   (e: 'update:filters', value: CompanyFilters): void
+  (e: 'company-selected', company: Company): void
 }>()
 
 function update<K extends keyof CompanyFilters>(key: K, value: CompanyFilters[K]) {
   emit('update:filters', { ...props.modelValue, [key]: value })
-}
-
-function toggleChip(key: 'sectors' | 'stages' | 'employee_ranges', value: string) {
-  const current = props.modelValue[key] as string[]
-  const next = current.includes(value)
-    ? current.filter(v => v !== value)
-    : [...current, value]
-  update(key, next)
 }
 
 const activeFilterCount = computed(() => {
@@ -36,65 +32,10 @@ function clearAll() {
   emit('update:filters', { search: '', sectors: [], stages: [], employee_ranges: [], is_hiring: null })
 }
 
-// Inline styles — safe from Tailwind JIT purging
-const sectorStyle: Record<string, { bg: string; text: string }> = {
-  'B2B Software':     { bg: '#eff6ff', text: '#1d4ed8' },
-  'FinTech':          { bg: '#f0fdf4', text: '#15803d' },
-  'Security':         { bg: '#fef2f2', text: '#b91c1c' },
-  'Bio/Medical Tech': { bg: '#faf5ff', text: '#7e22ce' },
-  'Energy':           { bg: '#fefce8', text: '#a16207' },
-  'Consumer':         { bg: '#fdf2f8', text: '#be185d' },
-  'Marketplaces':     { bg: '#f0fdfa', text: '#0f766e' },
-}
-
-const sectorActiveStyle: Record<string, { bg: string; text: string }> = {
-  'B2B Software':     { bg: '#2563eb', text: '#ffffff' },
-  'FinTech':          { bg: '#16a34a', text: '#ffffff' },
-  'Security':         { bg: '#dc2626', text: '#ffffff' },
-  'Bio/Medical Tech': { bg: '#9333ea', text: '#ffffff' },
-  'Energy':           { bg: '#ca8a04', text: '#ffffff' },
-  'Consumer':         { bg: '#db2777', text: '#ffffff' },
-  'Marketplaces':     { bg: '#0d9488', text: '#ffffff' },
-}
-
-const sectorIcons: Record<string, string> = {
-  'B2B Software':     'i-heroicons-code-bracket-20-solid',
-  'FinTech':          'i-heroicons-banknotes-20-solid',
-  'Security':         'i-heroicons-shield-check-20-solid',
-  'Bio/Medical Tech': 'i-heroicons-heart-20-solid',
-  'Energy':           'i-heroicons-bolt-20-solid',
-  'Consumer':         'i-heroicons-shopping-bag-20-solid',
-  'Marketplaces':     'i-heroicons-squares-2x2-20-solid',
-}
-
-const stageStyle: Record<string, { bg: string; text: string; border: string }> = {
-  'Pre-Seed':    { bg: '#f3f4f6', text: '#4b5563', border: '#d1d5db' },
-  'Seed':        { bg: '#f7fee7', text: '#4d7c0f', border: '#bef264' },
-  'Bootstrapped':{ bg: '#fffbeb', text: '#92400e', border: '#fde68a' },
-  'Series A':    { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
-  'Series B':    { bg: '#eef2ff', text: '#4338ca', border: '#c7d2fe' },
-  'Series C':    { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
-  'Series D+':   { bg: '#faf5ff', text: '#6b21a8', border: '#e9d5ff' },
-}
-
-const stageActiveStyle: Record<string, { bg: string; text: string; border: string }> = {
-  'Pre-Seed':    { bg: '#4b5563', text: '#ffffff', border: '#4b5563' },
-  'Seed':        { bg: '#65a30d', text: '#ffffff', border: '#65a30d' },
-  'Bootstrapped':{ bg: '#d97706', text: '#ffffff', border: '#d97706' },
-  'Series A':    { bg: '#2563eb', text: '#ffffff', border: '#2563eb' },
-  'Series B':    { bg: '#4f46e5', text: '#ffffff', border: '#4f46e5' },
-  'Series C':    { bg: '#7c3aed', text: '#ffffff', border: '#7c3aed' },
-  'Series D+':   { bg: '#7e22ce', text: '#ffffff', border: '#7e22ce' },
-}
-
-function sectorChipStyle(sector: string, active: boolean) {
-  const s = active ? sectorActiveStyle[sector] : sectorStyle[sector]
-  return s ? `background-color:${s.bg};color:${s.text};border-color:transparent` : ''
-}
-
-function stageChipStyle(stage: string, active: boolean) {
-  const s = active ? stageActiveStyle[stage] : stageStyle[stage]
-  return s ? `background-color:${s.bg};color:${s.text};border-color:${s.border}` : ''
+const selectUi = {
+  base: 'bg-white/10 text-white border-white/20 focus:border-white/40',
+  placeholder: 'text-white/40',
+  icon: { trailing: { name: 'i-heroicons-chevron-down-20-solid' } },
 }
 </script>
 
@@ -114,13 +55,17 @@ function stageChipStyle(stage: string, active: boolean) {
     </div>
 
     <!-- Scrollable body -->
-    <div class="overflow-y-auto flex-1 p-4 flex flex-col gap-5">
+    <div class="overflow-y-auto flex-1 p-4 flex flex-col gap-4">
 
-      <!-- Count -->
-      <p class="text-xs" style="color: #a8b2d1">
-        Showing <span class="font-semibold text-white">{{ count }}</span>
-        {{ count === 1 ? 'company' : 'companies' }}
-      </p>
+      <!-- Add company -->
+      <NuxtLink
+        to="/company/new"
+        class="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-xs font-medium transition-colors"
+        style="color:#a8b2d1; border: 1px dashed rgba(255,255,255,0.2)"
+      >
+        <UIcon name="i-heroicons-plus-circle-20-solid" class="w-4 h-4" />
+        Add your company
+      </NuxtLink>
 
       <!-- Search -->
       <UInput
@@ -133,84 +78,45 @@ function stageChipStyle(stage: string, active: boolean) {
       />
 
       <!-- Sector -->
-      <div>
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold uppercase tracking-wide" style="color: #a8b2d1">Sector</span>
-          <button
-            v-if="modelValue.sectors.length"
-            class="text-xs transition-colors"
-            style="color: #a8b2d1"
-            @click="update('sectors', [])"
-          >
-            clear
-          </button>
-        </div>
-        <div class="grid grid-cols-2 gap-1.5">
-          <button
-            v-for="sector in SECTORS"
-            :key="sector"
-            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all duration-150 text-left"
-            :style="sectorChipStyle(sector, modelValue.sectors.includes(sector))"
-            @click="toggleChip('sectors', sector)"
-          >
-            <UIcon :name="sectorIcons[sector] || 'i-heroicons-tag-20-solid'" class="w-3.5 h-3.5 shrink-0" />
-            <span class="truncate">{{ sector }}</span>
-          </button>
-        </div>
+      <div class="flex flex-col gap-1.5">
+        <span class="text-xs font-semibold uppercase tracking-wide" style="color: #a8b2d1">Sector</span>
+        <USelectMenu
+          :model-value="modelValue.sectors"
+          :options="SECTORS"
+          multiple
+          placeholder="All sectors"
+          size="sm"
+          :ui="selectUi"
+          @update:model-value="update('sectors', $event)"
+        />
       </div>
 
       <!-- Stage -->
-      <div>
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold uppercase tracking-wide" style="color: #a8b2d1">Stage</span>
-          <button
-            v-if="modelValue.stages.length"
-            class="text-xs transition-colors"
-            style="color: #a8b2d1"
-            @click="update('stages', [])"
-          >
-            clear
-          </button>
-        </div>
-        <div class="flex flex-wrap gap-1.5">
-          <button
-            v-for="stage in STAGES"
-            :key="stage"
-            class="px-2.5 py-1 rounded-full text-xs font-medium border transition-all duration-150"
-            :style="stageChipStyle(stage, modelValue.stages.includes(stage))"
-            @click="toggleChip('stages', stage)"
-          >
-            {{ stage }}
-          </button>
-        </div>
+      <div class="flex flex-col gap-1.5">
+        <span class="text-xs font-semibold uppercase tracking-wide" style="color: #a8b2d1">Stage</span>
+        <USelectMenu
+          :model-value="modelValue.stages"
+          :options="STAGES"
+          multiple
+          placeholder="All stages"
+          size="sm"
+          :ui="selectUi"
+          @update:model-value="update('stages', $event)"
+        />
       </div>
 
       <!-- Team Size -->
-      <div>
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold uppercase tracking-wide" style="color: #a8b2d1">Team Size</span>
-          <button
-            v-if="modelValue.employee_ranges.length"
-            class="text-xs transition-colors"
-            style="color: #a8b2d1"
-            @click="update('employee_ranges', [])"
-          >
-            clear
-          </button>
-        </div>
-        <div class="flex flex-wrap gap-1.5">
-          <button
-            v-for="range in EMPLOYEE_RANGES"
-            :key="range"
-            class="px-2.5 py-1 rounded-full text-xs font-medium border transition-all duration-150"
-            :style="modelValue.employee_ranges.includes(range)
-              ? 'background-color:#ffffff;color:#0d192d;border-color:#ffffff'
-              : 'background-color:rgba(255,255,255,0.08);color:#a8b2d1;border-color:rgba(255,255,255,0.15)'"
-            @click="toggleChip('employee_ranges', range)"
-          >
-            {{ range }}
-          </button>
-        </div>
+      <div class="flex flex-col gap-1.5">
+        <span class="text-xs font-semibold uppercase tracking-wide" style="color: #a8b2d1">Team Size</span>
+        <USelectMenu
+          :model-value="modelValue.employee_ranges"
+          :options="EMPLOYEE_RANGES"
+          multiple
+          placeholder="Any size"
+          size="sm"
+          :ui="selectUi"
+          @update:model-value="update('employee_ranges', $event)"
+        />
       </div>
 
       <!-- Hiring Now -->
@@ -239,16 +145,44 @@ function stageChipStyle(stage: string, active: boolean) {
         Clear all filters
       </button>
 
-      <!-- Add company -->
-      <div class="mt-auto pt-3" style="border-top: 1px solid rgba(255,255,255,0.1)">
-        <NuxtLink
-          to="/company/new"
-          class="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-xs font-medium transition-colors"
-          style="color:#a8b2d1"
+      <!-- Company list -->
+      <div v-if="companies.length" class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wide" style="color: #a8b2d1">Companies</span>
+          <span class="text-xs" style="color: #a8b2d1">
+            <span class="font-semibold text-white">{{ count }}</span>
+            {{ count === 1 ? 'result' : 'results' }}
+          </span>
+        </div>
+        <button
+          v-for="company in companies"
+          :key="company.id"
+          class="w-full text-left rounded-lg p-3 transition-colors hover:bg-gray-50"
+          style="background-color: #ffffff; border: 1px solid #e5e7eb;"
+          @click="emit('company-selected', company)"
         >
-          <UIcon name="i-heroicons-plus-circle-20-solid" class="w-4 h-4" />
-          Add your company
-        </NuxtLink>
+          <div class="flex items-start gap-2">
+            <div
+              class="w-1 self-stretch rounded-full shrink-0"
+              :style="{ backgroundColor: SECTOR_COLORS[company.sector ?? ''] ?? SECTOR_COLOR_DEFAULT }"
+            />
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-gray-900 text-sm font-semibold truncate">{{ company.name }}</span>
+                <UIcon name="i-heroicons-chevron-right-20-solid" class="w-4 h-4 shrink-0 text-gray-400" />
+              </div>
+              <div v-if="company.sector || company.stage || company.is_hiring" class="flex flex-wrap gap-1 mt-1">
+                <UBadge v-if="company.sector" color="blue" variant="subtle" size="xs">{{ company.sector }}</UBadge>
+                <UBadge v-if="company.stage" color="violet" variant="subtle" size="xs">{{ company.stage }}</UBadge>
+                <UBadge v-if="company.is_hiring" color="green" variant="solid" size="xs">Hiring</UBadge>
+              </div>
+              <div v-if="company.city" class="flex items-center gap-1 mt-1 text-gray-500">
+                <UIcon name="i-heroicons-map-pin-20-solid" class="w-3 h-3 shrink-0" />
+                <span class="text-xs truncate">{{ company.city }}</span>
+              </div>
+            </div>
+          </div>
+        </button>
       </div>
 
     </div>
