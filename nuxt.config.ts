@@ -21,6 +21,7 @@ export default defineNuxtConfig({
     supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || '',
     public: {
       mapboxToken: process.env.NUXT_PUBLIC_MAPBOX_TOKEN || '',
+      brandfetchClientId: process.env.NUXT_PUBLIC_BRANDFETCH_CLIENT_ID || '',
     },
   },
   css: ['mapbox-gl/dist/mapbox-gl.css', '~/assets/css/main.css'],
