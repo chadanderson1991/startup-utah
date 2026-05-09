@@ -21,6 +21,59 @@ const isOpen = ref(false)
 const inputText = ref('')
 const messagesContainer = ref<HTMLDivElement | null>(null)
 
+// Display mode — compact bottom-right widget OR full expanded panel.
+// Set at toggle time based on scroll position so it doesn't flip while open.
+const displayMode = ref<'compact' | 'expanded'>('compact')
+const isAtTop = ref(true)
+
+function updateScrollPos() {
+  if (typeof window !== 'undefined') {
+    isAtTop.value = window.scrollY < 80
+  }
+}
+
+onMounted(() => {
+  updateScrollPos()
+  window.addEventListener('scroll', updateScrollPos, { passive: true })
+})
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('scroll', updateScrollPos)
+  }
+})
+
+// Quick-start cards shown in the expanded view's empty state
+const quickStartCards = [
+  {
+    label: 'Thinking of starting my business',
+    message: "I'm thinking about starting a business in Utah. Where do I start?",
+    bg: '#1f5f3f',
+  },
+  {
+    label: 'Starting my business',
+    message: "I'm ready to start my business in Utah. What are the steps?",
+    bg: '#5e3a8a',
+  },
+  {
+    label: 'Grow my business',
+    message: 'I have an existing business in Utah and I want to grow it. What resources are available?',
+    bg: '#1e3a8a',
+  },
+  {
+    label: 'Sell or exit my business',
+    message: "I'm looking to sell or exit my business in Utah. What support is available?",
+    bg: '#0e7490',
+  },
+]
+
+async function sendQuickStart(message: string) {
+  if (isStreaming.value) return
+  await sendMessage(message, userContext.value, activeBusinessId.value ?? undefined)
+}
+
+// Whether the user has actually started a conversation (vs. just the greeting)
+const hasStartedChat = computed(() => messages.value.some(m => m.role === 'user'))
+
 // Authenticated user's profile + businesses
 const { data: profile, refresh: refreshProfile } = await useAsyncData(
   'chat-profile',
@@ -85,6 +138,10 @@ async function fetchPersonalizedGreeting() {
 }
 
 function toggle() {
+  if (!isOpen.value) {
+    // Decide expanded vs compact at open time so it doesn't flip mid-session
+    displayMode.value = isAtTop.value ? 'expanded' : 'compact'
+  }
   isOpen.value = !isOpen.value
   if (isOpen.value) fetchPersonalizedGreeting()
 }
@@ -150,10 +207,166 @@ watch(
 </script>
 
 <template>
+  <!-- ============== EXPANDED MODE (Sprig hero panel) ============== -->
+  <div v-if="isOpen && displayMode === 'expanded'" class="fixed inset-0 z-50">
+    <!-- Backdrop -->
+    <div
+      class="absolute inset-0"
+      style="background-color: rgba(8, 25, 46, 0.85); backdrop-filter: blur(4px);"
+      @click="close"
+    />
+
+    <!-- Centered panel container -->
+    <div class="relative h-full overflow-y-auto flex items-start justify-center pt-24 pb-12 px-4">
+      <div class="relative w-full max-w-6xl pointer-events-auto">
+        <!-- Close button -->
+        <button
+          class="absolute -top-12 right-0 text-white/70 hover:text-white transition-colors flex items-center gap-1 text-sm font-semibold"
+          @click="close"
+        >
+          Close
+          <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+        </button>
+
+        <!-- Chat panel -->
+        <div
+          class="rounded-2xl px-6 sm:px-10 py-10 relative overflow-hidden"
+          style="
+            background-color: var(--brand-navy);
+            border: 1px solid rgba(17, 223, 129, 0.35);
+            background-image:
+              radial-gradient(circle at 20% 30%, rgba(17, 223, 129, 0.06) 0%, transparent 50%),
+              radial-gradient(circle at 85% 70%, rgba(94, 58, 138, 0.06) 0%, transparent 50%);
+          "
+        >
+          <div class="flex flex-col lg:flex-row gap-6 lg:gap-10 items-start">
+            <!-- Sprig mascot (left) -->
+            <div class="flex flex-col items-center shrink-0 w-full lg:w-44">
+              <img
+                src="/sprig/thinking.png"
+                alt="Sprig the Startup State mascot"
+                class="w-32 lg:w-40 h-auto select-none pointer-events-none"
+                draggable="false"
+              />
+            </div>
+
+            <!-- Right side content -->
+            <div class="flex-1 w-full flex flex-col gap-5 min-w-0">
+              <!-- Greeting bubble (top of right side) -->
+              <div
+                v-if="!hasStartedChat"
+                class="relative bg-white rounded-2xl px-5 py-4 max-w-md shadow-lg"
+                style="border-bottom-left-radius: 6px;"
+              >
+                <p class="text-gray-800 text-base leading-relaxed">
+                  {{ messages[0]?.content && messages[0].content !== '...'
+                    ? messages[0].content
+                    : 'Hello, what are you looking to do today?' }}
+                </p>
+                <!-- Pointer arrow toward Sprig (left side) -->
+                <span
+                  class="hidden lg:block absolute top-6 -left-2 w-4 h-4 bg-white"
+                  style="clip-path: polygon(100% 0, 100% 100%, 0 50%);"
+                />
+              </div>
+
+              <!-- Quick-start cards OR chat thread -->
+              <div v-if="!hasStartedChat" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  v-for="card in quickStartCards"
+                  :key="card.label"
+                  :disabled="isStreaming"
+                  class="rounded-lg p-5 text-left text-white font-bold uppercase tracking-wide text-sm leading-snug shadow-md transition-all hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                  :style="{ backgroundColor: card.bg }"
+                  @click="sendQuickStart(card.message)"
+                >
+                  {{ card.label }}
+                </button>
+              </div>
+
+              <!-- Chat thread (after first user message) -->
+              <div
+                v-else
+                ref="messagesContainer"
+                class="flex flex-col gap-3 overflow-y-auto"
+                style="max-height: 50vh;"
+              >
+                <div
+                  v-for="(msg, idx) in messages"
+                  :key="idx"
+                  class="flex flex-col"
+                  :class="msg.role === 'user' ? 'items-end' : 'items-start'"
+                >
+                  <div
+                    class="max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-md"
+                    :class="msg.role === 'user'
+                      ? 'sprig-bubble-user rounded-br-sm'
+                      : 'sprig-bubble-ai rounded-bl-sm'"
+                  >
+                    <template v-if="msg.content && msg.content !== '...'">{{ msg.content }}</template>
+                    <span v-else class="flex items-center gap-1 py-1">
+                      <span class="sprig-typing-dot" />
+                      <span class="sprig-typing-dot" />
+                      <span class="sprig-typing-dot" />
+                    </span>
+                  </div>
+                  <div
+                    v-if="msg.resources?.length"
+                    class="w-full mt-2 flex flex-wrap gap-2"
+                  >
+                    <div
+                      v-for="r in msg.resources"
+                      :key="r.id"
+                      class="w-[45%]"
+                    >
+                      <ChatbotChatResourceCard :resource="r" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input below panel -->
+        <div class="mt-4 bg-white rounded-full shadow-2xl flex items-center pl-6 pr-2 py-2">
+          <input
+            v-model="inputText"
+            type="text"
+            placeholder="I'm thinking of starting an agricultural business"
+            class="flex-1 bg-transparent border-0 focus:outline-none text-gray-800 placeholder-gray-400 text-base py-2"
+            :disabled="isStreaming"
+            @keydown="handleKeydown"
+          />
+          <UButton
+            icon="i-heroicons-paper-airplane"
+            color="primary"
+            class="rounded-full"
+            size="lg"
+            :disabled="isStreaming || !inputText.trim()"
+            @click="handleSend"
+          />
+        </div>
+
+        <!-- Restart link (only when chat has started) -->
+        <div v-if="hasStartedChat" class="mt-3 flex justify-end">
+          <button
+            class="text-white/70 hover:text-white text-xs font-semibold flex items-center gap-1"
+            @click="handleClear"
+          >
+            <UIcon name="i-heroicons-arrow-path" class="w-4 h-4" />
+            Start over
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== COMPACT MODE (existing bottom-right widget) ============== -->
   <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
     <!-- Chat card -->
     <div
-      v-if="isOpen"
+      v-if="isOpen && displayMode === 'compact'"
       class="mb-3 flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
       style="width: 420px; height: 600px"
     >
@@ -165,7 +378,7 @@ watch(
         <div class="flex items-center gap-2">
           <UIcon name="i-heroicons-chat-bubble-left-ellipsis" class="w-5 h-5 text-white" />
           <div>
-            <span class="text-white font-semibold text-sm">Utah Startup Navigator</span>
+            <span class="text-white font-semibold text-sm">Startup Sprig</span>
             <p v-if="onboardingDone && userContext.stage" class="text-blue-200 text-xs leading-none mt-0.5">
               {{ BUSINESS_STAGES.find(s => s.value === userContext.stage)?.label }}
               <template v-if="userContext.industry"> · {{ userContext.industry }}</template>
@@ -274,27 +487,29 @@ watch(
             <div
               class="max-w-[82%] px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap"
               :class="msg.role === 'user'
-                ? 'bg-startup-green-600 text-white rounded-br-sm'
-                : 'bg-gray-100 text-gray-800 rounded-bl-sm'"
+                ? 'sprig-bubble-user rounded-br-sm'
+                : 'sprig-bubble-ai rounded-bl-sm'"
             >
               <template v-if="msg.content && msg.content !== '...'">{{ msg.content }}</template>
               <span v-else class="flex items-center gap-1 py-1">
-                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0ms" />
-                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:150ms" />
-                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:300ms" />
+                <span class="sprig-typing-dot" />
+                <span class="sprig-typing-dot" />
+                <span class="sprig-typing-dot" />
               </span>
             </div>
 
             <!-- Resource cards -->
             <div
               v-if="msg.resources?.length"
-              class="w-full mt-2 flex flex-col gap-2"
+              class="w-full mt-2 flex flex-wrap gap-2"
             >
-              <ChatbotChatResourceCard
+              <div
                 v-for="r in msg.resources"
                 :key="r.id"
-                :resource="r"
-              />
+                class="w-[45%]"
+              >
+                <ChatbotChatResourceCard :resource="r" />
+              </div>
             </div>
           </div>
         </div>
@@ -318,8 +533,9 @@ watch(
       </template>
     </div>
 
-    <!-- Toggle button -->
+    <!-- Toggle button (hidden while the expanded panel is open) -->
     <UButton
+      v-if="!(isOpen && displayMode === 'expanded')"
       size="lg"
       class="rounded-full shadow-lg px-5"
       :style="{ backgroundColor: 'var(--brand-green-dark)', borderColor: 'var(--brand-green-dark)' }"

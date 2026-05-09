@@ -25,7 +25,7 @@ export interface ChatMessage {
 }
 
 const RESOURCE_MARKER = '__RESOURCES__'
-const GREETING = "Hi! I'm the Utah Startup Navigator. I'll help you find the right state programs and resources for your specific situation."
+const GREETING = "Hi! I'm Startup Sprig. I'll help you find the right state programs and resources for your specific situation."
 
 function parseMessage(raw: string): { content: string; resources?: ChatResource[] } {
   const idx = raw.indexOf(RESOURCE_MARKER)
@@ -39,13 +39,15 @@ function parseMessage(raw: string): { content: string; resources?: ChatResource[
   }
 }
 
-export const useChat = () => {
-  const messages = ref<ChatMessage[]>([
-    { role: 'assistant', content: GREETING },
-  ])
-  const isStreaming = ref(false)
-  const error = ref<string | null>(null)
+// Module-scoped state so every caller of useChat() shares the same conversation.
+// Lets the inline SprigChatPanel on the homepage and the floating ChatWidget see the same messages.
+const messages = ref<ChatMessage[]>([
+  { role: 'assistant', content: GREETING },
+])
+const isStreaming = ref(false)
+const error = ref<string | null>(null)
 
+export const useChat = () => {
   const sendMessage = async (content: string, userContext?: UserContext, businessId?: string) => {
     if (isStreaming.value) return
     messages.value.push({ role: 'user', content })
