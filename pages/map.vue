@@ -22,9 +22,16 @@ function onFiltersUpdate(newFilters: CompanyFilters) {
   fetchCompanies()
 }
 
+const startupMapRef = ref()
+
 function onCompanySelected(company: Company | null) {
   selectCompany(company)
-  if (company) sidebarOpen.value = true
+  if (company) {
+    sidebarOpen.value = true
+    if (company.lat != null && company.lng != null) {
+      startupMapRef.value?.flyToCompany(company.lat, company.lng)
+    }
+  }
 }
 
 // ── Sidebar collapse ──────────────────────────────────────────────────────────
@@ -70,6 +77,7 @@ const { data: stats } = await useFetch('/api/companies/stats')
 
       <ClientOnly>
         <MapStartupMap
+          ref="startupMapRef"
           :companies="companies"
           class="w-full h-full"
           @company-selected="onCompanySelected"
@@ -100,7 +108,9 @@ const { data: stats } = await useFetch('/api/companies/stats')
         v-else
         :model-value="filters"
         :count="companies.length"
+        :companies="companies"
         @update:filters="onFiltersUpdate"
+        @company-selected="onCompanySelected"
       />
     </aside>
 

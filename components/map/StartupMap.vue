@@ -241,6 +241,12 @@ watch(
   { deep: true },
 )
 
+function flyToCompany(lat: number, lng: number) {
+  if (map) map.flyTo({ center: [lng, lat], zoom: 13, duration: 800 })
+}
+
+defineExpose({ flyToCompany })
+
 onUnmounted(() => {
   for (const marker of markersOnScreen.values()) marker.remove()
   markersOnScreen.clear()
