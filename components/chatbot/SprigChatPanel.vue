@@ -1,41 +1,26 @@
 <script setup lang="ts">
 import { nextTick } from 'vue'
 import { useChat, type UserContext } from '~/composables/useChat'
-import type { Business } from '~/types/profile'
+import { useActiveBusiness } from '~/composables/useActiveBusiness'
+import { useSprigPanelVisibility } from '~/composables/useSprigPanelVisibility'
+import { useQuickStartCards } from '~/composables/useQuickStartCards'
 
 const user = useSupabaseUser()
 const inputText = ref('')
 const messagesContainer = ref<HTMLDivElement | null>(null)
+const panelRoot = ref<HTMLDivElement | null>(null)
+const sprigPanelInView = useSprigPanelVisibility()
 
-// Authenticated user's profile + active business (for personalized greeting / chat context)
-const { data: profile } = await useAsyncData(
-  'sprig-profile',
-  async () => {
-    if (!user.value) return null
-    return $fetch('/api/profile')
-  },
-  { watch: [user] },
-)
-const { data: businesses } = await useAsyncData<Business[]>(
-  'sprig-businesses',
-  async () => {
-    if (!user.value) return []
-    return $fetch<Business[]>('/api/businesses')
-  },
-  { watch: [user] },
-)
-const activeBusinessId = ref<string | null>(null)
-watch([profile, businesses, user], () => {
-  if (!user.value) { activeBusinessId.value = null; return }
-  const list = businesses.value ?? []
-  if (!list.length) { activeBusinessId.value = null; return }
-  const saved = (profile.value as { active_business_id?: string | null } | null)?.active_business_id
-  activeBusinessId.value = list.find(b => b.id === saved)?.id ?? list[0].id
-}, { immediate: true })
+// Shared profile + businesses + active-business state (auth-aware loading is
+// handled inside the composable, so the panel has business context as soon as
+// the Supabase session resolves).
+const { profile, activeBusiness, ensureLoaded } = useActiveBusiness()
+const activeBusinessId = computed(() => activeBusiness.value?.id ?? null)
 
-// Investor mode
+// Investor mode — drives both pill set (via useQuickStartCards) and the
+// `mode` parameter sent with each chat message.
 const profileMode = computed(() =>
-  (profile.value as { profile_type?: string } | null)?.profile_type === 'investor'
+  profile.value?.profile_type === 'investor'
     ? 'investor' as const
     : 'entrepreneur' as const,
 )
@@ -52,6 +37,10 @@ async function fetchPersonalizedGreeting() {
   greetingFetched.value = true
   messages.value[0].content = '...'
   try {
+    // Wait for the active-business data to land so the greeting endpoint
+    // gets a real businessId (otherwise it produces a generic greeting
+    // that ignores the user's business name + journey step).
+    await ensureLoaded()
     const { greeting } = await $fetch<{ greeting: string }>('/api/chat/greeting', {
       method: 'POST',
       body: { businessId: activeBusinessId.value ?? undefined },
@@ -68,67 +57,9 @@ watch(user, (val) => {
   if (val) fetchPersonalizedGreeting()
 })
 
-// Quick-start cards adapt to auth + business state
-//   1. Anonymous   → 4 generic journey-stage cards
-//   2. Logged in, no business linked → starting-focused + a card to link a business
-//   3. Logged in, business in idea/early stage → starting & funding focus
-//   4. Logged in, business in growth/established stage → growth/scale/exit focus
-type QuickStartCard =
-  | { label: string; message: string; bg: string; to?: never }
-  | { label: string; to: string;     bg: string; message?: never }
-
-const quickStartCards = computed<QuickStartCard[]>(() => {
-  // Investor mode: always show investor-focused cards regardless of business state
-  if (profileMode.value === 'investor') {
-    return [
-      { label: 'Show me B2B Software companies',                  message: 'Show me B2B Software companies in Utah.',                                  bg: '#1f5f3f' },
-      { label: 'Which companies are raising Seed funding?',       message: 'Which Utah companies are currently raising Seed funding?',                  bg: '#5e3a8a' },
-      { label: "Who's hiring right now?",                         message: 'Which Utah startups are actively hiring right now?',                        bg: '#1e3a8a' },
-      { label: 'Tell me about the Utah FinTech ecosystem',        message: 'Tell me about the Utah FinTech ecosystem.',                                 bg: '#0e7490' },
-    ]
-  }
-
-  if (!user.value) {
-    return [
-      { label: 'Thinking of starting my business', message: "I'm thinking about starting a business in Utah. Where do I start?", bg: '#1f5f3f' },
-      { label: 'Starting my business',             message: "I'm ready to start my business in Utah. What are the steps?", bg: '#5e3a8a' },
-      { label: 'Grow my business',                 message: 'I have an existing business in Utah and I want to grow it. What resources are available?', bg: '#1e3a8a' },
-      { label: 'Sell or exit my business',         message: "I'm looking to sell or exit my business in Utah. What support is available?", bg: '#0e7490' },
-    ]
-  }
-
-  const list = businesses.value ?? []
-
-  // Logged in but no businesses linked → focus on starting + nudge to link a business
-  if (!list.length) {
-    return [
-      { label: 'Thinking of starting my business', message: "I'm thinking about starting a business in Utah. Recommend the best resources for me to get oriented.", bg: '#1f5f3f' },
-      { label: 'Starting my business',             message: "I'm ready to start my business in Utah. Walk me through the first steps and recommend the right state programs.", bg: '#5e3a8a' },
-      { label: 'Link my existing business',        to: '/profile',                                                                                                                bg: '#0e7490' },
-    ]
-  }
-
-  const business = list.find(b => b.id === activeBusinessId.value) ?? list[0]
-  const stage = business.stage
-  const where = business.county ? `${business.county} County` : 'Utah'
-
-  if (stage === 'idea' || stage === 'early') {
-    return [
-      { label: 'Recommended for me right now',     message: `Based on my business "${business.name}" (${stage} stage in ${where}, journey step ${business.journey_step}/19), recommend the most relevant Utah state resources I should pursue right now.`, bg: '#1f5f3f' },
-      { label: 'Early-stage funding',              message: `What funding options (grants, pitch competitions, micro-loans) are available for an ${stage}-stage business in ${where}?`,                                                                                  bg: '#5e3a8a' },
-      { label: 'Find a mentor or program',         message: `What mentorship programs or accelerators in Utah would be a good fit for my business "${business.name}"?`,                                                                                                  bg: '#1e3a8a' },
-      { label: 'My next journey step',             message: `I'm at journey step ${business.journey_step}/19 with my business "${business.name}". What should I focus on next, and which resources support that step?`,                                                  bg: '#0e7490' },
-    ]
-  }
-
-  // growth / established
-  return [
-    { label: 'Resources to scale',                 message: `My business "${business.name}" is in the ${stage} stage in ${where}. Recommend Utah resources to help me scale.`, bg: '#1f5f3f' },
-    { label: 'Growth-stage funding',               message: `What growth-stage funding (venture capital, growth funds, debt) is available to a ${stage}-stage business in ${where}?`,                                                                                                                              bg: '#5e3a8a' },
-    { label: 'Talent & hiring',                    message: `What Utah resources can help me find and hire talent for my business "${business.name}"?`, bg: '#1e3a8a' },
-    { label: 'Plan an exit',                       message: `I'm considering selling or exiting "${business.name}". What Utah resources, professional networks, or programs support that?`,                                                                              bg: '#0e7490' },
-  ]
-})
+// Adaptive quick-start pills (investor mode handled inside the composable;
+// logic shared with the floating ChatWidget popup).
+const quickStartCards = useQuickStartCards()
 
 const hasStartedChat = computed(() => messages.value.some(m => m.role === 'user'))
 
@@ -169,8 +100,8 @@ function clearTimers() {
 const FIDGET_HOLD_MS = 4500
 
 function scheduleIdleAnimation() {
-  // Wait 20–30s before next fidget
-  const delay = 20_000 + Math.random() * 10_000
+  // Wait 10–15s before next fidget
+  const delay = 10_000 + Math.random() * 5_000
   idleTimer = setTimeout(() => {
     // Skip if Sprig is currently bouncing for a request
     if (!isStreaming.value) {
@@ -188,6 +119,29 @@ function scheduleIdleAnimation() {
 
 onMounted(() => scheduleIdleAnimation())
 onBeforeUnmount(() => clearTimers())
+
+// Publish whether the inline panel is in the viewport so the floating
+// Navigator button (rendered in app.vue) can hide while the panel is visible.
+// The IntersectionObserver fires its first callback async, which leaves a
+// frame where the launcher would render alongside the panel mascot. We do
+// a synchronous bounding-rect check first so the launcher is suppressed
+// from the first paint when the panel is in view at mount time.
+let visibilityObserver: IntersectionObserver | null = null
+onMounted(() => {
+  if (!panelRoot.value) return
+  const rect = panelRoot.value.getBoundingClientRect()
+  sprigPanelInView.value = rect.bottom > 0 && rect.top < (window.innerHeight || 0)
+  if (typeof IntersectionObserver === 'undefined') return
+  visibilityObserver = new IntersectionObserver(
+    ([entry]) => { sprigPanelInView.value = entry.isIntersecting },
+    { threshold: 0 },
+  )
+  visibilityObserver.observe(panelRoot.value)
+})
+onBeforeUnmount(() => {
+  visibilityObserver?.disconnect()
+  sprigPanelInView.value = false
+})
 
 const sprigImage = computed(() => {
   if (isStreaming.value) return '/sprig/bounce.gif'
@@ -228,7 +182,7 @@ watch(messages, async () => {
 
 <template>
   <!-- Outer relative wrapper so Sprig can overflow the panel's left edge -->
-  <div class="relative">
+  <div ref="panelRoot" class="relative">
     <!-- Desktop: Sprig overflows the panel's left edge, half-outside the panel -->
     <img
       :src="sprigImage"
@@ -274,33 +228,38 @@ watch(messages, async () => {
             class="sprig-bubble-ai relative rounded-2xl px-5 py-4 shadow-lg w-full lg:w-72 lg:shrink-0"
             style="border-bottom-left-radius: 6px;"
           >
-            <p class="text-base leading-relaxed">
-              {{ messages[0]?.content && messages[0].content !== '...'
-                ? messages[0].content
-                : 'Hello, what are you looking to do today?' }}
+            <p
+              v-if="messages[0]?.content && messages[0].content !== '...'"
+              class="text-base leading-relaxed"
+            >
+              {{ messages[0].content }}
             </p>
+            <span v-else class="flex items-center gap-1 py-2">
+              <span class="sprig-typing-dot" />
+              <span class="sprig-typing-dot" />
+              <span class="sprig-typing-dot" />
+            </span>
             <span
               class="hidden lg:block absolute top-6 -left-2 w-4 h-4"
               style="background-color: var(--sprig-ai-bg); clip-path: polygon(100% 0, 100% 100%, 0 50%);"
             />
           </div>
 
-          <!-- Cards column — wraps to a 2-column grid, up to 4 cards visible at a time -->
-          <div class="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-3 content-start">
+          <!-- Pills — flex-wrap so each pill sizes to its label -->
+          <div class="flex-1 w-full flex flex-wrap gap-2 content-start">
             <template v-for="card in quickStartCards" :key="card.label">
               <NuxtLink
                 v-if="card.to"
                 :to="card.to"
-                class="rounded-lg p-4 text-left text-white font-bold uppercase tracking-wide text-sm leading-snug shadow-md transition-all hover:-translate-y-0.5 hover:shadow-xl no-underline block"
-                :style="{ backgroundColor: card.bg }"
+                class="sprig-pill no-underline"
               >
-                {{ card.label }}
+                <span>{{ card.label }}</span>
+                <UIcon name="i-heroicons-arrow-top-right-on-square" class="w-4 h-4 ml-1.5 shrink-0" />
               </NuxtLink>
               <button
                 v-else
                 :disabled="isStreaming"
-                class="rounded-lg p-4 text-left text-white font-bold uppercase tracking-wide text-sm leading-snug shadow-md transition-all hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                :style="{ backgroundColor: card.bg }"
+                class="sprig-pill"
                 @click="send(card.message!)"
               >
                 {{ card.label }}
