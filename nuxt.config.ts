@@ -1,9 +1,6 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ['@nuxt/ui', '@nuxtjs/supabase'],
-  nitro: {
-    preset: 'netlify',
-  },
   app: {
     head: {
       link: [
