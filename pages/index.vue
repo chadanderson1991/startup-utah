@@ -72,7 +72,7 @@ const cards = [
           </p>
           <div class="mt-10 flex flex-wrap items-center gap-4">
             <UButton
-              to="/navigator"
+              to="/journey"
               size="xl"
               :ui="{
                 color: {

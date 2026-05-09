@@ -8,6 +8,7 @@ useSeoMeta({
 })
 
 const user = useSupabaseUser()
+const route = useRoute()
 const { resources, filters, isLoading, fetchResources } = useResources()
 
 const isAdmin = computed(
@@ -47,6 +48,11 @@ const allResources = ref<Resource[]>([])
 const profileLoading = ref(false)
 
 onMounted(async () => {
+  // Pre-populate topic filters from URL query param (e.g. coming from journey page)
+  if (route.query.topics) {
+    filters.value.topics = String(route.query.topics).split(',').filter(Boolean)
+  }
+
   if (user.value) {
     profileLoading.value = true
     const [profileData] = await Promise.all([

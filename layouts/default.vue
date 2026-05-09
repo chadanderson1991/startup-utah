@@ -15,7 +15,7 @@ async function signOut() {
 }
 
 const navLinks = [
-  { label: 'Start Your Journey', to: '/' },
+  { label: 'Start Your Journey', to: '/journey' },
   { label: 'Resources', to: '/navigator' },
   { label: 'Get Funding', to: '/navigator?category=funding' },
   { label: 'Startup Map', to: '/map' },
