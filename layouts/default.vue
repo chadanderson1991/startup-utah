@@ -191,10 +191,10 @@ const socials = [
 
       <!-- Main footer -->
       <div style="background-color: #141313">
-        <div class="max-w-7xl mx-auto px-4 sm:px-8 grid grid-cols-1 md:grid-cols-3 gap-10" style="padding-top: 32px; padding-bottom: 32px;">
-          <!-- Col 1: Logos + address -->
-          <div class="flex flex-col">
-            <NuxtLink to="/" aria-label="Startup State home" class="mb-3">
+        <div class="max-w-7xl mx-auto px-4 sm:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10" style="padding-top: 32px; padding-bottom: 32px;">
+          <!-- Col 1: Logos -->
+          <div class="flex flex-col items-start">
+            <NuxtLink to="/" aria-label="Startup State home" class="mb-8">
               <img
                 src="/brand/footer-logo.svg"
                 alt="Startup State Utah"
@@ -205,7 +205,7 @@ const socials = [
               href="https://business.utah.gov/"
               target="_blank"
               rel="noreferrer noopener"
-              class="inline-block mb-4"
+              class="inline-block"
             >
               <img
                 src="/brand/goeo_white_standard.webp"
@@ -214,58 +214,35 @@ const socials = [
                 style="height: 50px;"
               />
             </a>
-            <p class="leading-relaxed" style="font-size: 0.875rem; max-width: 250px;">
+          </div>
+
+          <!-- Col 2: Address + email -->
+          <div>
+            <p style="font-size: 0.875rem; line-height: 1.4; max-width: 200px;">
               Utah Governor's Office of Economic Opportunity (GOEO)<br />
               60 East South Temple, Suite 300<br />
               Salt Lake City, Utah 84111-1041
             </p>
             <a
               href="mailto:startup@utah.gov"
-              class="hover:opacity-80 transition-opacity mt-3"
+              class="hover:opacity-80 transition-opacity inline-block mt-4"
               style="font-size: 0.875rem; color: var(--brand-green-bright)"
             >
               startup@utah.gov
             </a>
           </div>
 
-          <!-- Col 2: Journey -->
-          <div>
-            <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: 0.5em;">Journey</h3>
-            <ul class="space-y-2">
-              <li>
-                <a href="/#thinking-of-starting" class="hover:opacity-80 transition-opacity">
-                  I'm thinking of starting my business
-                </a>
-              </li>
-              <li>
-                <a href="/#start-business" class="hover:opacity-80 transition-opacity">
-                  Start my business
-                </a>
-              </li>
-              <li>
-                <a href="/#grow-business" class="hover:opacity-80 transition-opacity">
-                  Grow my business
-                </a>
-              </li>
-              <li>
-                <a href="/#sell-business" class="hover:opacity-80 transition-opacity">
-                  Close or sell my business
-                </a>
-              </li>
-            </ul>
-          </div>
-
           <!-- Col 3: Newsletter -->
           <div style="max-width: 240px;">
-            <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: 0.5em;">Email Newsletters</h3>
-            <p style="font-size: 0.8em; font-weight: 700; margin-bottom: 1em;">
+            <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: 0.5em; line-height: 1.4;">Email Newsletters</h3>
+            <p style="font-size: 0.8em; font-weight: 700; line-height: 1.4; margin-bottom: 1em;">
               Sign up for our email newsletters to learn more about our office.
             </p>
             <a
               href="https://cdn.forms-content.sg-form.com/06b418c5-1057-11ee-9a80-ca5180dad175"
               target="_blank"
               rel="noreferrer noopener"
-              class="newsletter-btn inline-flex items-center justify-center font-normal transition-colors"
+              class="newsletter-btn inline-flex items-center justify-center transition-colors"
             >
               Subscribe to Newsletter
             </a>
@@ -279,23 +256,7 @@ const socials = [
           class="max-w-7xl mx-auto px-4 sm:px-8 py-6 flex flex-col md:flex-row items-center justify-between gap-6 flex-wrap"
           style="border-top: 1px solid #f1f1f1;"
         >
-          <!-- LEFT: Utah.gov + links -->
-          <div class="flex flex-col items-center md:items-start gap-2">
-            <div style="font-size: 1.125rem; font-weight: 600;">Utah.gov</div>
-            <ul
-              class="flex flex-row flex-wrap items-center justify-center md:justify-start"
-              style="gap: 1rem; font-size: 0.875rem; list-style: none; padding: 0; margin: 0;"
-            >
-              <li><a href="http://www.utah.gov" target="_blank" rel="noreferrer noopener" class="hover:underline">Home</a></li>
-              <li><a href="https://startup.utah.gov/brand/" target="_blank" rel="noreferrer noopener" class="hover:underline">Media and Press</a></li>
-              <li><a href="http://www.utah.gov/disclaimer.html" target="_blank" rel="noreferrer noopener" class="hover:underline">Terms&nbsp;of&nbsp;Use</a></li>
-              <li><a href="http://www.utah.gov/privacypolicy.html" target="_blank" rel="noreferrer noopener" class="hover:underline">Privacy&nbsp;Policy</a></li>
-              <li><a href="http://www.utah.gov/accessibility.html" target="_blank" rel="noreferrer noopener" class="hover:underline">Accessibility&nbsp;Policy</a></li>
-              <li><a href="http://www.utah.gov/translate.html" target="_blank" rel="noreferrer noopener" class="hover:underline">Translate</a></li>
-            </ul>
-          </div>
-
-          <!-- RIGHT: UTAH brand + "An official state" -->
+          <!-- LEFT: UTAH brand + "An official state" -->
           <a
             href="https://utah.gov/"
             target="_blank"
@@ -317,10 +278,30 @@ const socials = [
             </svg>
             <span
               class="hidden sm:inline-block"
-              style="height: 30px; width: 1px; background-color: #d7d7d7; margin: 0 1rem; display: inline-block;"
+              style="height: 30px; width: 1px; background-color: #d7d7d7; margin: 0 1rem;"
             />
             <span style="font-size: 1.125rem;">An official state of Utah website</span>
           </a>
+
+          <!-- RIGHT: Utah.gov + links inline, separated by white vertical lines -->
+          <div
+            class="flex flex-row flex-wrap items-center justify-center md:justify-end"
+            style="gap: 1rem; font-size: 0.875rem;"
+          >
+            <span style="font-size: 1.125rem; font-weight: 600;">Utah.gov</span>
+            <span class="inline-block" style="width: 1px; height: 16px; background-color: #ffffff;" />
+            <a href="http://www.utah.gov" target="_blank" rel="noreferrer noopener" class="hover:underline">Home</a>
+            <span class="inline-block" style="width: 1px; height: 16px; background-color: #ffffff;" />
+            <a href="https://startup.utah.gov/brand/" target="_blank" rel="noreferrer noopener" class="hover:underline">Media and Press</a>
+            <span class="inline-block" style="width: 1px; height: 16px; background-color: #ffffff;" />
+            <a href="http://www.utah.gov/disclaimer.html" target="_blank" rel="noreferrer noopener" class="hover:underline">Terms&nbsp;of&nbsp;Use</a>
+            <span class="inline-block" style="width: 1px; height: 16px; background-color: #ffffff;" />
+            <a href="http://www.utah.gov/privacypolicy.html" target="_blank" rel="noreferrer noopener" class="hover:underline">Privacy&nbsp;Policy</a>
+            <span class="inline-block" style="width: 1px; height: 16px; background-color: #ffffff;" />
+            <a href="http://www.utah.gov/accessibility.html" target="_blank" rel="noreferrer noopener" class="hover:underline">Accessibility&nbsp;Policy</a>
+            <span class="inline-block" style="width: 1px; height: 16px; background-color: #ffffff;" />
+            <a href="http://www.utah.gov/translate.html" target="_blank" rel="noreferrer noopener" class="hover:underline">Translate</a>
+          </div>
         </div>
       </div>
     </footer>
