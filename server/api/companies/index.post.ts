@@ -1,11 +1,23 @@
-import { serverSupabaseClient } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 import { createError, defineEventHandler, readBody } from 'h3'
+import { getAdminClient } from '~/lib/supabase-admin'
 import type { Company } from '~/types/company'
 import { geocodeAddress } from '../../utils/geocode'
 
 export default defineEventHandler(async (event) => {
-  const client = await serverSupabaseClient(event)
   const config = useRuntimeConfig()
+
+  // Detect submitter and admin status before reading body
+  let submitterId: string | null = null
+  let isAdmin = false
+  try {
+    const user = await serverSupabaseUser(event)
+    if (user) {
+      submitterId = user.id
+      isAdmin = !!(user.user_metadata?.role === 'admin' || user.app_metadata?.role === 'admin')
+    }
+  } catch { /* anonymous submission — allowed */ }
+
   const body = await readBody<Partial<Company>>(event)
 
   if (!body.name?.trim()) {
@@ -43,11 +55,14 @@ export default defineEventHandler(async (event) => {
     job_postings: body.job_postings ?? [],
     photos: body.photos ?? [],
     is_verified: false,
-    is_active: true,
-    claimed_by: null,
+    is_active: false,
+    claimed_by: submitterId,
   }
 
-  const { data, error } = await client
+  // Use admin client to bypass RLS on insert
+  const db = isAdmin ? getAdminClient() : await serverSupabaseClient(event)
+
+  const { data, error } = await db
     .from('companies')
     .insert(payload)
     .select()
