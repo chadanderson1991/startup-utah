@@ -1,6 +1,6 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
-  modules: ['@nuxt/ui', '@nuxtjs/supabase'],
+  modules: ['@nuxt/ui', '@nuxtjs/supabase', '@netlify/nuxt'],
   app: {
     head: {
       link: [
@@ -16,12 +16,12 @@ export default defineNuxtConfig({
     redirect: false,
   },
   runtimeConfig: {
-    anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
-    groqApiKey: process.env.GROQ_API_KEY || '',
-    supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || '',
+    anthropicApiKey: '',
+    groqApiKey: '',
+    supabaseServiceKey: '',
     public: {
-      mapboxToken: process.env.NUXT_PUBLIC_MAPBOX_TOKEN || '',
-      brandfetchClientId: process.env.NUXT_PUBLIC_BRANDFETCH_CLIENT_ID || '',
+      mapboxToken: '',
+      brandfetchClientId: '',
     },
   },
   css: ['mapbox-gl/dist/mapbox-gl.css', '~/assets/css/main.css'],
