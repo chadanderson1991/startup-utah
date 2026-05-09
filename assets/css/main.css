@@ -9,6 +9,183 @@
   --brand-navy: #0d192d;
   --brand-text: #474747;
   --brand-amber: #ffae00;
+
+  /* ========================================================================
+   * Sprig chat palette — used by SprigChatPanel, ChatWidget, ChatResourceCard
+   * ========================================================================
+   */
+  --sprig-bg:                  #06152B;
+  --sprig-cyan:                #3CE3FF;
+  --sprig-purple:              #5926A5;
+  --sprig-green:               #13E083;
+  --sprig-green-light:         #19F59B;
+  --sprig-green-mid:           #10C977;
+  --sprig-green-deep:          #036B41;
+  --sprig-blue:                #0021FF;
+
+  /* Container */
+  --sprig-container-border:    var(--sprig-green-deep);
+  --sprig-container-glow:      0 0 32px rgba(19, 224, 131, 0.12);
+
+  /* Bubbles */
+  --sprig-user-bg:             var(--sprig-cyan);
+  --sprig-user-text:           #000000;
+  --sprig-ai-bg:               #E2FCF0;
+  --sprig-ai-text:             #000000;
+
+  /* Resource cards */
+  --sprig-card-gradient:       #F4F7FB;
+  --sprig-card-gradient-hover: #E5EAEF;
+  --sprig-card-shadow:         0 4px 12px rgba(0, 0, 0, 0.10);
+  --sprig-card-shadow-hover:   0 8px 20px rgba(0, 0, 0, 0.16);
+  --sprig-card-text:           #102033;
+  --sprig-card-link-text:      #102033;
+
+  /* Input */
+  --sprig-input-bg:            #F2F4F7;
+  --sprig-input-text:          #1A2233;
+  --sprig-input-placeholder:   #64748B;
+  --sprig-input-focus-ring:    rgba(60, 227, 255, 0.55);
+
+  /* Send button */
+  --sprig-send-bg:             var(--sprig-green);
+  --sprig-send-bg-hover:       var(--sprig-green-light);
+  --sprig-send-icon:           #FFFFFF;
+}
+
+/* ====== Sprig keyframes ============================================== */
+@keyframes sprig-idle-pulse {
+  0%, 100% { filter: drop-shadow(0 0 14px rgba(19, 224, 131, 0.25)); }
+  50%      { filter: drop-shadow(0 0 26px rgba(19, 224, 131, 0.55)); }
+}
+@keyframes sprig-thinking-pulse {
+  0%, 100% { background-color: rgba(89, 38, 165, 0.45); transform: scale(0.85); }
+  50%      { background-color: rgba(89, 38, 165, 1);    transform: scale(1.15); }
+}
+@keyframes sprig-streaming-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(19, 224, 131, 0); }
+  50%      { box-shadow: 0 0 18px 2px rgba(19, 224, 131, 0.45); }
+}
+@keyframes sprig-card-appear {
+  0%   { opacity: 0; transform: translateY(10px); box-shadow: 0 0 0 2px rgba(60, 227, 255, 0.6); }
+  60%  { opacity: 1; transform: translateY(-1px); box-shadow: 0 0 0 2px rgba(60, 227, 255, 0.4); }
+  100% { opacity: 1; transform: translateY(0);    box-shadow: var(--sprig-card-shadow); }
+}
+@keyframes sprig-cyan-ripple {
+  0%   { box-shadow: 0 0 0 0 rgba(60, 227, 255, 0.55); }
+  100% { box-shadow: 0 0 0 14px rgba(60, 227, 255, 0); }
+}
+
+/* ====== Sprig utility classes ======================================== */
+
+/* Container — dark deep-navy with subtle deep-green border + faint green glow */
+.sprig-panel {
+  background-color: var(--sprig-bg);
+  border: 1px solid var(--sprig-container-border);
+  box-shadow: var(--sprig-container-glow);
+}
+
+/* Bubbles */
+.sprig-bubble-user {
+  background-color: var(--sprig-user-bg);
+  color: var(--sprig-user-text);
+  font-weight: 400;
+}
+.sprig-bubble-ai {
+  background-color: var(--sprig-ai-bg);
+  color: var(--sprig-ai-text);
+}
+.sprig-bubble-streaming {
+  animation: sprig-streaming-glow 1.8s ease-in-out infinite;
+}
+
+/* Typing indicator dots — purple, pulsing */
+.sprig-typing-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 9999px;
+  background-color: var(--sprig-purple);
+  display: inline-block;
+  animation: sprig-thinking-pulse 1.2s ease-in-out infinite;
+}
+.sprig-typing-dot:nth-child(2) { animation-delay: 0.18s; }
+.sprig-typing-dot:nth-child(3) { animation-delay: 0.36s; }
+
+/* Resource card — gradient bg, hover lift, focusable */
+.sprig-card {
+  background: var(--sprig-card-gradient);
+  color: var(--sprig-card-text);
+  border: 1px solid var(--sprig-green-deep);
+  border-radius: 0.5rem;
+  box-shadow: var(--sprig-card-shadow);
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  animation: sprig-card-appear 480ms ease-out;
+}
+.sprig-card:hover,
+.sprig-card:focus-visible {
+  transform: translateY(-2px);
+  background: var(--sprig-card-gradient-hover);
+  box-shadow: var(--sprig-card-shadow-hover);
+  outline: none;
+}
+.sprig-card:focus-visible {
+  box-shadow: var(--sprig-card-shadow-hover), 0 0 0 3px rgba(60, 227, 255, 0.55);
+}
+.sprig-card-title {
+  color: var(--sprig-card-link-text);
+  text-decoration: none;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.sprig-card-body {
+  color: var(--sprig-card-text);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* Input pill — light bg with focus ring */
+.sprig-input-shell {
+  background-color: var(--sprig-input-bg);
+  border: 1px solid transparent;
+  box-shadow: 0 0 0 0 var(--sprig-input-focus-ring);
+  transition: box-shadow 160ms ease, border-color 160ms ease;
+}
+.sprig-input-shell:focus-within {
+  border-color: rgba(60, 227, 255, 0.4);
+  box-shadow: 0 0 0 3px var(--sprig-input-focus-ring);
+}
+.sprig-input-shell input {
+  color: var(--sprig-input-text);
+}
+.sprig-input-shell input::placeholder {
+  color: var(--sprig-input-placeholder);
+}
+
+/* Send button — green, brighter on hover */
+.sprig-send-btn {
+  background-color: var(--sprig-send-bg);
+  color: var(--sprig-send-icon);
+  border-radius: 9999px;
+  transition: background-color 160ms ease;
+}
+.sprig-send-btn:hover:not(:disabled) {
+  background-color: var(--sprig-send-bg-hover);
+}
+.sprig-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Sprig mascot — soft green ambient pulse while idle */
+.sprig-idle-glow {
+  animation: sprig-idle-pulse 3.4s ease-in-out infinite;
+}
+
+/* Cyan ripple emitted briefly when user sends a message */
+.sprig-send-ripple {
+  animation: sprig-cyan-ripple 600ms ease-out;
 }
 
 html,

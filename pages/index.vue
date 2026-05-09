@@ -4,37 +4,6 @@ useSeoMeta({
   description:
     'Welcome to the Startup Capital of the World. Discover the resources, programs, and companies building the future of Utah\'s economy.',
 })
-
-const cards = [
-  {
-    title: 'Starting a Business',
-    cta: 'New Business Steps',
-    to: '/navigator?category=starting',
-    image: '/brand/thinking-image-1.webp',
-    alt: 'Smiling man with beard in an apron',
-  },
-  {
-    title: 'Grow Your Business',
-    cta: 'Explore Resources',
-    to: '/navigator',
-    image: '/brand/starting-idea_1.webp',
-    alt: 'Two people discussing and pointing at a laptop screen',
-  },
-  {
-    title: 'Get Funding',
-    cta: 'Funding Opportunities',
-    to: '/navigator?category=funding',
-    image: '/brand/growing-image-1.webp',
-    alt: 'Woman in red shirt looking to the left and smiling',
-  },
-  {
-    title: 'Build Connections',
-    cta: 'Find Events',
-    to: '#',
-    image: '/brand/sell-exit-image-1.webp',
-    alt: 'Two men talking and looking at a tablet',
-  },
-]
 </script>
 
 <template>
@@ -115,34 +84,8 @@ const cards = [
         <polygon points="0,100 100,100 100,0" />
       </svg>
 
-      <div class="relative max-w-7xl mx-auto">
-        <!-- Heading + subtitle -->
-        <div class="text-center max-w-3xl mx-auto mb-16">
-          <h2 class="thriving-h2">UTAH's thriving ecosystem</h2>
-          <p class="thriving-sub">
-            Be a part of Utah's thriving startup scene. Start, grow, and build your
-            business in the Startup Capital of the World.
-          </p>
-        </div>
-
-        <!-- 4 cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
-          <article
-            v-for="card in cards"
-            :key="card.title"
-            class="flex flex-col items-center text-center"
-          >
-            <img
-              :src="card.image"
-              :alt="card.alt"
-              class="w-full aspect-square object-cover mb-7"
-            />
-            <h3 class="thriving-card-h3">{{ card.title }}</h3>
-            <NuxtLink :to="card.to" class="thriving-card-btn">
-              {{ card.cta }}
-            </NuxtLink>
-          </article>
-        </div>
+      <div class="relative max-w-6xl mx-auto">
+        <ChatbotSprigChatPanel />
       </div>
     </section>
 

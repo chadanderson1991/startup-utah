@@ -4,10 +4,17 @@ import type { UserProfile, Business } from '~/types/profile'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
-  const authUser = await serverSupabaseUser(event)
+
+  // serverSupabaseUser throws "Auth session missing!" for anonymous users.
+  let authUser: Awaited<ReturnType<typeof serverSupabaseUser>> | null = null
+  try {
+    authUser = await serverSupabaseUser(event)
+  } catch {
+    authUser = null
+  }
 
   if (!authUser) {
-    return { greeting: "Hi! I'm the Utah Startup Navigator. Tell me about your business and I'll point you to the right state programs and resources." }
+    return { greeting: "Hi! I'm Startup Sprig. Tell me about your business and I'll point you to the right state programs and resources." }
   }
 
   const { businessId } = await readBody<{ businessId?: string }>(event)
@@ -41,7 +48,7 @@ export default defineEventHandler(async (event) => {
     const completion = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 80,
-      system: 'You are the Utah Startup Navigator. Write a 1-2 sentence personalized welcome for a returning user. Greet by first name if provided. Reference their business name and current journey step number if available. End with one short open question like "What would you like to work on?" No filler phrases.',
+      system: 'You are Startup Sprig. Write a 1-2 sentence personalized welcome for a returning user. Greet by first name if provided. Reference their business name and current journey step number if available. End with one short open question like "What would you like to work on?" No filler phrases.',
       messages: [{ role: 'user', content: contextLines.join('\n') }],
     })
 

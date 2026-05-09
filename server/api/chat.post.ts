@@ -31,7 +31,7 @@ interface ChatBody {
 // Static content — combined into one block for a single cache breakpoint.
 // ENTREPRENEUR_JOURNEY is ~1500 tokens; system instructions ~700 tokens.
 // Total cached: ~2200 tokens. Cache hit cost = 10% of normal input price.
-const STATIC_SYSTEM = `You are the Utah Startup Navigator, an official AI assistant for startup.utah.gov — the Utah Governor's Office of Economic Opportunity startup platform.
+const STATIC_SYSTEM = `You are Startup Sprig, the official AI assistant for startup.utah.gov — the Utah Governor's Office of Economic Opportunity startup platform. When asked who you are, say "I'm Startup Sprig."
 
 YOUR SOLE PURPOSE: Help founders and entrepreneurs in Utah find the right state programs, resources, and support services for their specific situation.
 
@@ -42,16 +42,18 @@ STRICT GUARDRAILS
 - Do NOT recommend resources that are not in the database — never make up programs.
 - If asked anything off-topic, respond only: "I'm focused on helping Utah entrepreneurs find state resources. Tell me about your business and I can point you to the right programs."
 
-HOW TO HELP USERS
+HOW TO HELP USERS — RESPONSE STYLE
+The cards do the talking. Your prose is just a brief lead-in.
+
 1. Use the USER PROFILE (if provided) to immediately tailor your response — don't ask for info you already have.
-2. Identify which of the 19 steps the user is currently on based on their situation.
-3. Match their profile (stage, industry, location, community) to the most relevant resources.
-4. Recommend 3-5 resources max. Explain WHY each fits but do NOT paste URLs in your prose — they will be shown as cards.
-5. Mention what step comes next so they understand the journey ahead.
-6. Ask one focused follow-up question if you need more clarity.
-7. After your explanation text, on its own line at the very end, append a resource card block in EXACTLY this format (no spaces before __RESOURCES__):
-__RESOURCES__[{"id":1,"title":"Resource Name","link":"https://example.com","topics":["Funding"],"communities":["Veteran"],"reason":"One sentence explaining why this fits the user's specific situation."}]
-Only include resources you explicitly recommended. If you recommended none, omit the __RESOURCES__ line entirely.
+2. Match their profile (stage, industry, location, community) to the most relevant resources.
+3. Recommend 3–5 resources max.
+4. Keep your prose response to ONE short line — a single greeting/lead-in sentence (e.g., "Here are a few resources that fit your stage and industry:" or "These three programs are the best fit for what you're working on:"). DO NOT explain each resource in prose — the explanation goes in the resource card's "reason" field. DO NOT paste URLs in your prose — links live on the cards.
+5. After that one-line lead-in, on its own line at the very end, append a resource card block in EXACTLY this format (no spaces before __RESOURCES__):
+__RESOURCES__[{"id":1,"title":"Resource Name","link":"https://example.com","topics":["Funding"],"communities":["Veteran"],"reason":"One concise sentence (about 15–25 words) describing what this resource is and why it fits the user's specific situation. Combine what-it-does + why-it-fits."}]
+6. Only include resources you explicitly recommended. If none fit, return a one-line apology and omit the __RESOURCES__ line entirely.
+7. Use the RESOURCE DATABASE entries' description and topics to write each reason accurately — never invent capabilities a resource doesn't claim.
+8. Only ask a follow-up question if you genuinely cannot recommend a resource without more info. Otherwise, recommend now.
 
 ${ENTREPRENEUR_JOURNEY}`
 
@@ -99,6 +101,7 @@ function buildResourceBlock(resources: Record<string, unknown>[], ctx?: UserCont
   const filtered = filterResources(resources, ctx)
   const compact = filtered.map(r => {
     const obj: Record<string, unknown> = { id: r.id, title: r.title }
+    if (r.description)                                                obj.description = r.description
     if (r.link)                                                       obj.link        = r.link
     if ((r.communities as string[])?.length)                          obj.communities = r.communities
     if ((r.industries  as string[])?.length)                          obj.industries  = r.industries
@@ -155,16 +158,22 @@ export default defineEventHandler(async (event) => {
     const client = await serverSupabaseClient(event)
     const { data } = await client
       .from('resources')
-      .select('id,title,link,communities,industries,locations,topics')
+      .select('id,title,description,link,communities,industries,locations,topics')
       .eq('is_active', true)
     cachedResources = data || []
     cacheExpiry = Date.now() + 5 * 60 * 1000
   }
 
-  // Fetch authenticated user's profile + business server-side
+  // Fetch authenticated user's profile + business server-side.
+  // serverSupabaseUser throws "Auth session missing!" for anonymous users — that's expected here, so swallow it.
   let profile: UserProfile | null = null
   let business: Business | null = null
-  const authUser = await serverSupabaseUser(event)
+  let authUser: Awaited<ReturnType<typeof serverSupabaseUser>> | null = null
+  try {
+    authUser = await serverSupabaseUser(event)
+  } catch {
+    authUser = null
+  }
   if (authUser) {
     const client = await serverSupabaseClient(event)
     const [profileRes, bizRes] = await Promise.all([
