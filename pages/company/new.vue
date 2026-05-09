@@ -102,19 +102,14 @@ async function handleSubmit() {
     <!-- Success state -->
     <div v-if="createdCompany" class="flex flex-col items-center gap-4 py-12 text-center">
       <UIcon name="i-heroicons-check-circle" class="w-16 h-16 text-green-500" />
-      <h2 class="text-xl font-bold text-gray-900">Company submitted!</h2>
+      <h2 class="text-xl font-bold text-gray-900">Submitted for review!</h2>
       <p class="text-gray-500 max-w-sm">
-        <strong>{{ createdCompany.name }}</strong> has been added. Your profile
-        is currently unverified — an admin will review it soon.
+        Thanks for submitting <strong>{{ createdCompany.name }}</strong>. Our team
+        will review it and add it to the map once approved.
       </p>
-      <div class="flex gap-3 mt-2">
-        <UButton :to="`/company/${createdCompany.id}`" color="primary">
-          View Profile
-        </UButton>
-        <UButton to="/map" variant="outline" color="gray">
-          Back to Map
-        </UButton>
-      </div>
+      <UButton to="/map" color="primary">
+        Back to Map
+      </UButton>
     </div>
 
     <!-- Form -->
