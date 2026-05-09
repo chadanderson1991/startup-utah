@@ -17,6 +17,7 @@ export default defineNuxtConfig({
   },
   supabase: {
     redirect: false,
+    serviceKey: undefined,
   },
   runtimeConfig: {
     anthropicApiKey: '',
