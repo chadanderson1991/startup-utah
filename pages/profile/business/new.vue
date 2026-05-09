@@ -1,16 +1,11 @@
 <script setup lang="ts">
-import { UTAH_COUNTIES, INDUSTRIES, JOURNEY_STEPS } from '~/lib/constants'
+import { UTAH_COUNTIES, INDUSTRIES, JOURNEY_STEPS, STAGES } from '~/lib/constants'
 import type { BusinessCreate } from '~/types/profile'
 
 definePageMeta({ middleware: 'auth' })
 useSeoMeta({ title: 'Add Business · Startup State Utah' })
 
-const STAGE_OPTIONS = [
-  { label: 'Just an idea', value: 'idea' },
-  { label: 'Early stage (0–2 years)', value: 'early' },
-  { label: 'Growing (2–5 years)', value: 'growth' },
-  { label: 'Established (5+ years)', value: 'established' },
-]
+const STAGE_OPTIONS = STAGES.map(s => ({ label: s, value: s }))
 
 const isSubmitting = ref(false)
 const errorMessage = ref<string | null>(null)
@@ -18,7 +13,7 @@ const errorMessage = ref<string | null>(null)
 const form = reactive<BusinessCreate>({
   name: '',
   description: '',
-  stage: 'idea',
+  stage: 'Pre-Seed',
   industry: '',
   county: '',
   website: '',

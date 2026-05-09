@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { UTAH_COUNTIES, INDUSTRIES, JOURNEY_STEPS } from '~/lib/constants'
+import { UTAH_COUNTIES, INDUSTRIES, JOURNEY_STEPS, STAGES } from '~/lib/constants'
 import type { Company } from '~/types/company'
 import type { BusinessUpdate } from '~/types/profile'
 
@@ -8,12 +8,7 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const id = route.params.id as string
 
-const STAGE_OPTIONS = [
-  { label: 'Just an idea', value: 'idea' },
-  { label: 'Early stage (0–2 years)', value: 'early' },
-  { label: 'Growing (2–5 years)', value: 'growth' },
-  { label: 'Established (5+ years)', value: 'established' },
-]
+const STAGE_OPTIONS = STAGES.map(s => ({ label: s, value: s }))
 
 const { data: business } = await useFetch<Company>(`/api/businesses/${id}`)
 if (!business.value) throw createError({ statusCode: 404, statusMessage: 'Business not found' })

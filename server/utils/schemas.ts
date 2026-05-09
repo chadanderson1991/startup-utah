@@ -3,7 +3,6 @@ import { z } from 'zod'
 const COMMUNITIES = ['Veteran', 'Women', 'Rural', 'Student', 'Multicultural'] as const
 // Covers personal-business stages (idea/early/…) and map-company stages (Pre-Seed/Seed/…)
 const STAGES = [
-  'idea', 'early', 'growth', 'established',
   'Pre-Seed', 'Seed', 'Series A', 'Series B', 'Series C', 'Series D+', 'Bootstrapped',
 ] as const
 const UTAH_COUNTIES = [
