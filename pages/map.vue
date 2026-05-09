@@ -10,11 +10,48 @@ useSeoMeta({
 definePageMeta({ layout: 'map' })
 
 // ── Company state ─────────────────────────────────────────────────────────────
+const route = useRoute()
 const { companies, filters, isLoading, selectedCompany, fetchCompanies, selectCompany } =
   useCompanies()
 
+// Sidebar collapse — declared early so the focus-id watcher below can open it.
+const sidebarOpen = ref(true)
+
+// Pre-fill filters from URL query params (e.g. coming from Sprig's investor
+// flow, which builds a /map?sectors=…&stages=…&employee_ranges=… link).
+function applyQueryFilters() {
+  const csv = (v: unknown): string[] =>
+    typeof v === 'string' && v.trim() ? v.split(',').map(s => s.trim()).filter(Boolean) : []
+
+  filters.value = {
+    search: typeof route.query.search === 'string' ? route.query.search : '',
+    sectors: csv(route.query.sectors),
+    stages: csv(route.query.stages),
+    employee_ranges: csv(route.query.employee_ranges),
+    is_hiring: route.query.is_hiring === 'true' ? true : null,
+  }
+}
+
+// `?focus=<company-id>` (used by chat company cards) — passed to StartupMap so
+// it flies to that company and selects it once the company list has loaded.
+const focusCompanyId = computed(() =>
+  typeof route.query.focus === 'string' ? route.query.focus : null,
+)
+
 onMounted(() => {
+  applyQueryFilters()
   fetchCompanies()
+})
+
+// Once companies are loaded, if a focus id was requested in the URL, select
+// that company so the sidebar opens to its detail.
+watch([companies, focusCompanyId], ([list, focusId]) => {
+  if (!focusId || !list.length) return
+  const target = list.find(c => c.id === focusId)
+  if (target && selectedCompany.value?.id !== focusId) {
+    selectCompany(target)
+    sidebarOpen.value = true
+  }
 })
 
 function onFiltersUpdate(newFilters: CompanyFilters) {
@@ -33,9 +70,6 @@ function onCompanySelected(company: Company | null) {
     }
   }
 }
-
-// ── Sidebar collapse ──────────────────────────────────────────────────────────
-const sidebarOpen = ref(true)
 
 // ── Auth / profile ────────────────────────────────────────────────────────────
 const user = useSupabaseUser()
@@ -79,6 +113,8 @@ const { data: stats } = await useFetch('/api/companies/stats')
         <MapStartupMap
           ref="startupMapRef"
           :companies="companies"
+          :focus-company-id="focusCompanyId"
+          :selected-company-id="selectedCompany?.id ?? null"
           class="w-full h-full"
           @company-selected="onCompanySelected"
         />
